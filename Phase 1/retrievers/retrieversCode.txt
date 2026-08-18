@@ -1,0 +1,223 @@
+base_retriever.py
+
+"""
+retrievers/base_retriever.py
+
+WHAT THIS FILE DOES
+--------------------
+Defines two things:
+
+1. `BaseRetriever` -- the contract every retriever follows: a
+   `retrieve(query, top_k)` method that takes the user's question and
+   returns the most relevant Record objects for that source.
+
+2. `KeywordRetriever` -- a ready-to-use implementation of that contract
+   using the simple keyword-overlap scoring from keyword_scoring.py.
+   Every Phase 1 retriever (cards, offers, campaigns) is just a
+   one-line subclass of this that says "load your records from this
+   loader" -- see cards_retriever.py for an example.
+
+WHY SPLIT IT THIS WAY
+-----------------------
+Cards, offers, and campaigns retrieval logic was IDENTICAL in Phase 1
+(all keyword matching) -- only the underlying data differed. Rather
+than copy-pasting the same scoring loop three times, we write it once
+here. If in Phase 2 you want ONE specific source to retrieve
+differently (say, campaigns should also filter by active status),
+that source's file stops inheriting from KeywordRetriever and
+implements BaseRetriever directly instead -- the rest of the app
+doesn't need to change, because it only ever calls `.retrieve()`.
+
+INPUTS  : none (abstract class) / a BaseLoader subclass (KeywordRetriever)
+OUTPUTS : none (abstract class) -- subclasses return list[Record]
+"""
+
+from abc import ABC, abstractmethod
+from loaders.record import Record
+from loaders.base_loader import BaseLoader
+from retrievers.keyword_scoring import score
+
+
+class BaseRetriever(ABC):
+    @abstractmethod
+    def retrieve(self, query: str, top_k: int) -> list[Record]:
+        """
+        Return the `top_k` Records most relevant to `query`.
+        Must be implemented by every subclass.
+        """
+        raise NotImplementedError
+
+
+class KeywordRetriever(BaseRetriever):
+    """
+    A reusable retriever that loads records once (via the given loader)
+    and scores them against each query using plain keyword overlap.
+    Subclass this and pass a loader instance to get a working retriever
+    for a new source in one line -- see cards_retriever.py.
+    """
+
+    def __init__(self, loader: BaseLoader):
+        self._records: list[Record] = loader.load()
+
+    def retrieve(self, query: str, top_k: int) -> list[Record]:
+        scored = [(score(query, r.search_text), r) for r in self._records]
+        scored = [(s, r) for s, r in scored if s > 0]
+        scored.sort(key=lambda pair: pair[0], reverse=True)
+        return [r for _, r in scored[:top_k]]
+
+
+-----------------------------------------------------------------------------------------------------------------------
+campagins_retriever.py
+
+
+"""
+retrievers/campaigns_retriever.py
+
+WHAT THIS FILE DOES
+--------------------
+The keyword retriever for the "campaigns" source. All the real logic
+lives in KeywordRetriever (see base_retriever.py) -- this file just
+tells it to load its data from CampaignsLoader.
+
+NOTE ON "active" CAMPAIGNS
+----------------------------
+Phase 1 does NOT filter by campaign_status or dates -- it only does
+keyword matching, so an expired campaign could still be returned if
+its words match the query. We deliberately leave that correctness
+concern for Phase 2 (dynamic retrieval / CRAG), so Phase 1 stays
+"vanilla" as intended. Campaign status IS included in each record's
+display_text, so the LLM can still see and mention it if relevant.
+
+INPUTS  : query (str)
+OUTPUTS : list[Record] -- the most relevant campaign records, best first
+"""
+
+from retrievers.base_retriever import KeywordRetriever
+from loaders.campaigns_loader import CampaignsLoader
+
+
+class CampaignsRetriever(KeywordRetriever):
+    def __init__(self):
+        super().__init__(loader=CampaignsLoader())
+
+
+-------------------------------------------------------------------------------------------------
+cards_retriever.py
+
+"""
+retrievers/cards_retriever.py
+
+WHAT THIS FILE DOES
+--------------------
+The keyword retriever for the "cards" source. All the real logic
+lives in KeywordRetriever (see base_retriever.py) -- this file just
+tells it to load its data from CardsLoader.
+
+INPUTS  : query (str) -- the user's question or a sub-query from the router
+OUTPUTS : list[Record] -- the most relevant card records, best first
+"""
+
+from retrievers.base_retriever import KeywordRetriever
+from loaders.cards_loader import CardsLoader
+
+
+class CardsRetriever(KeywordRetriever):
+    def __init__(self):
+        super().__init__(loader=CardsLoader())
+
+-------------------------------------------------------------------------------------------------
+keyword_scoring.py
+
+"""
+retrievers/keyword_scoring.py
+
+WHAT THIS FILE DOES
+--------------------
+A small, dependency-free scoring function: given a user query and a
+Record's search_text, returns a relevance score (higher = more
+relevant). This is Phase 1's ENTIRE retrieval "algorithm" -- no
+embeddings, no vector database, just counting overlapping words.
+
+WHY IT EXISTS AS ITS OWN FILE
+------------------------------
+Every source-specific retriever (cards, offers, campaigns) needs the
+SAME scoring logic -- only the data differs. Putting it here once
+means:
+  1. All retrievers score consistently.
+  2. If you later want to upgrade Phase 1's matching (e.g. add fuzzy
+     matching, or handle Arabic stemming), you change ONE function
+     and every retriever benefits immediately.
+
+HOW IT WORKS (intentionally simple, on purpose)
+------------------------------------------------
+1. Lowercase and split the query into individual words ("tokens").
+2. For each Record, count how many of those query words appear
+   anywhere in its search_text.
+3. That count IS the score. Records with score 0 are considered
+   irrelevant and dropped.
+
+This is a bag-of-words / keyword-overlap approach -- the simplest
+possible form of "search" without any ML. It's intentionally naive:
+Phase 1's goal is to prove the end-to-end loop works, not to have
+great retrieval quality yet. Phase 2's re-ranker and dynamic router
+will make this smarter.
+
+INPUTS  : query (str), a Record's search_text (str)
+OUTPUTS : an integer score
+"""
+
+import re
+
+# Very short, common English words add noise to keyword matching
+# (e.g. matching on "the", "is", "a" would make almost every record
+# score > 0). We filter these out before scoring.
+STOPWORDS = {
+    "the", "a", "an", "is", "are", "was", "were", "what", "which",
+    "who", "whom", "this", "that", "of", "for", "on", "in", "to",
+    "do", "does", "can", "i", "me", "my", "you", "your", "it", "its",
+    "and", "or", "with", "about", "have", "has", "there", "any",
+}
+
+
+def tokenize(text: str) -> list[str]:
+    """Lowercase and split into word tokens, dropping punctuation and stopwords."""
+    words = re.findall(r"[a-zA-Z0-9%]+", text.lower())
+    return [w for w in words if w not in STOPWORDS]
+
+
+def score(query: str, search_text: str) -> int:
+    """
+    Return the number of query tokens that appear in search_text.
+    A score of 0 means "no overlap -- not relevant".
+    """
+    query_tokens = set(tokenize(query))
+    if not query_tokens:
+        return 0
+    matches = sum(1 for token in query_tokens if token in search_text)
+    return matches
+
+-------------------------------------------------------------------------------------------------
+offers_retriever.py
+
+"""
+retrievers/offers_retriever.py
+
+WHAT THIS FILE DOES
+--------------------
+The keyword retriever for the "offers" source (installment plans +
+discounts). All the real logic lives in KeywordRetriever (see
+base_retriever.py) -- this file just tells it to load its data from
+OffersLoader.
+
+INPUTS  : query (str)
+OUTPUTS : list[Record] -- the most relevant offer records, best first
+"""
+
+from retrievers.base_retriever import KeywordRetriever
+from loaders.offers_loader import OffersLoader
+
+
+class OffersRetriever(KeywordRetriever):
+    def __init__(self):
+        super().__init__(loader=OffersLoader())
+

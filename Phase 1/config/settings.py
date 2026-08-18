@@ -27,8 +27,7 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 # Project paths
 # ---------------------------------------------------------------------------
-# PROJECT_ROOT = the vectorless_rag_bank/ folder itself, computed automatically
-# so the code works no matter where you clone/copy the project.
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 RAW_DATA_DIR = PROJECT_ROOT / "data" / "raw"
@@ -38,27 +37,29 @@ CARDS_XLSX_PATH = RAW_DATA_DIR / "20260306_Product_Catalog_new_version.xlsx"
 OFFERS_XLSX_PATH = RAW_DATA_DIR / "Feb_2026_offers_-_Wave_1_-_Call_Center.xlsx"
 CAMPAIGNS_JSON_PATH = RAW_DATA_DIR / "campaigns_clean.json"
 
-# ---------------------------------------------------------------------------
-# Ollama (local LLM) settings
-# ---------------------------------------------------------------------------
-# Ollama runs a local HTTP server, by default at this address, exposing
-# an OpenAI-incompatible but simple JSON API. We read these from
-# environment variables so you can override them without editing code,
-# e.g. `OLLAMA_MODEL=qwen2.5:7b-instruct python run.py`
+# ============================================================
+# LLM / OLLAMA CONFIGURATION
+# ============================================================
 OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
 
-# Pick any model you have pulled locally with `ollama pull <model>`.
-# llama3.1:8b-instruct is a solid, widely-available default with decent
-# instruction-following for a project this size. Swap freely.
-OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "llama3.1:8b")
+# ------------------------------------------------------------
+# Models
+# ------------------------------------------------------------
+OLLAMA_INDEXER_MODEL = "hf.co/bartowski/Llama-3.2-1B-Instruct-GGUF:latest"
+OLLAMA_TRAVERSER_MODEL = "hf.co/bartowski/Llama-3.2-1B-Instruct-GGUF:latest"
+OLLAMA_GENERATOR_MODEL = "hf.co/bartowski/Llama-3.2-1B-Instruct-GGUF:latest"
 
-# How long (seconds) to wait for a local generation before giving up.
-# Local models on CPU can be slow, so this is generous.
-OLLAMA_TIMEOUT_SECONDS = int(os.environ.get("OLLAMA_TIMEOUT_SECONDS", "120"))
+# ------------------------------------------------------------
+# Temperature
+# ------------------------------------------------------------
+OLLAMA_INDEXER_TEMPERATURE = 0.0
+OLLAMA_TRAVERSER_TEMPERATURE = 0.0
+OLLAMA_GENERATOR_TEMPERATURE = 0.2
 
-# Sampling temperature: lower = more deterministic/factual answers.
-# For a banking Q&A bot grounded in retrieved facts, we want low creativity.
-LLM_TEMPERATURE = float(os.environ.get("LLM_TEMPERATURE", "0.1"))
+# ------------------------------------------------------------
+# Request timeout
+# ------------------------------------------------------------
+OLLAMA_TIMEOUT_SECONDS = 120
 
 # ---------------------------------------------------------------------------
 # Retrieval settings (Phase 1: simple keyword retrieval)

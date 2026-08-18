@@ -1,0 +1,1160 @@
+Retrievers code.txt
+{
+    base_retriever.py
+
+"""
+retrievers/base_retriever.py
+
+WHAT THIS FILE DOES
+--------------------
+Defines two things:
+
+1. `BaseRetriever` -- the contract every retriever follows: a
+   `retrieve(query, top_k)` method that takes the user's question and
+   returns the most relevant Record objects for that source.
+
+2. `KeywordRetriever` -- a ready-to-use implementation of that contract
+   using the simple keyword-overlap scoring from keyword_scoring.py.
+   Every Phase 1 retriever (cards, offers, campaigns) is just a
+   one-line subclass of this that says "load your records from this
+   loader" -- see cards_retriever.py for an example.
+
+WHY SPLIT IT THIS WAY
+-----------------------
+Cards, offers, and campaigns retrieval logic was IDENTICAL in Phase 1
+(all keyword matching) -- only the underlying data differed. Rather
+than copy-pasting the same scoring loop three times, we write it once
+here. If in Phase 2 you want ONE specific source to retrieve
+differently (say, campaigns should also filter by active status),
+that source's file stops inheriting from KeywordRetriever and
+implements BaseRetriever directly instead -- the rest of the app
+doesn't need to change, because it only ever calls `.retrieve()`.
+
+INPUTS  : none (abstract class) / a BaseLoader subclass (KeywordRetriever)
+OUTPUTS : none (abstract class) -- subclasses return list[Record]
+"""
+
+from abc import ABC, abstractmethod
+from loaders.record import Record
+from loaders.base_loader import BaseLoader
+from retrievers.keyword_scoring import score
+
+
+class BaseRetriever(ABC):
+    @abstractmethod
+    def retrieve(self, query: str, top_k: int) -> list[Record]:
+        """
+        Return the `top_k` Records most relevant to `query`.
+        Must be implemented by every subclass.
+        """
+        raise NotImplementedError
+
+
+class KeywordRetriever(BaseRetriever):
+    """
+    A reusable retriever that loads records once (via the given loader)
+    and scores them against each query using plain keyword overlap.
+    Subclass this and pass a loader instance to get a working retriever
+    for a new source in one line -- see cards_retriever.py.
+    """
+
+    def __init__(self, loader: BaseLoader):
+        self._records: list[Record] = loader.load()
+
+    def retrieve(self, query: str, top_k: int) -> list[Record]:
+        scored = [(score(query, r.search_text), r) for r in self._records]
+        scored = [(s, r) for s, r in scored if s > 0]
+        scored.sort(key=lambda pair: pair[0], reverse=True)
+        return [r for _, r in scored[:top_k]]
+
+
+-----------------------------------------------------------------------------------------------------------------------
+campagins_retriever.py
+
+
+"""
+retrievers/campaigns_retriever.py
+
+WHAT THIS FILE DOES
+--------------------
+The keyword retriever for the "campaigns" source. All the real logic
+lives in KeywordRetriever (see base_retriever.py) -- this file just
+tells it to load its data from CampaignsLoader.
+
+NOTE ON "active" CAMPAIGNS
+----------------------------
+Phase 1 does NOT filter by campaign_status or dates -- it only does
+keyword matching, so an expired campaign could still be returned if
+its words match the query. We deliberately leave that correctness
+concern for Phase 2 (dynamic retrieval / CRAG), so Phase 1 stays
+"vanilla" as intended. Campaign status IS included in each record's
+display_text, so the LLM can still see and mention it if relevant.
+
+INPUTS  : query (str)
+OUTPUTS : list[Record] -- the most relevant campaign records, best first
+"""
+
+from retrievers.base_retriever import KeywordRetriever
+from loaders.campaigns_loader import CampaignsLoader
+
+
+class CampaignsRetriever(KeywordRetriever):
+    def __init__(self):
+        super().__init__(loader=CampaignsLoader())
+
+
+-------------------------------------------------------------------------------------------------
+cards_retriever.py
+
+"""
+retrievers/cards_retriever.py
+
+WHAT THIS FILE DOES
+--------------------
+The keyword retriever for the "cards" source. All the real logic
+lives in KeywordRetriever (see base_retriever.py) -- this file just
+tells it to load its data from CardsLoader.
+
+INPUTS  : query (str) -- the user's question or a sub-query from the router
+OUTPUTS : list[Record] -- the most relevant card records, best first
+"""
+
+from retrievers.base_retriever import KeywordRetriever
+from loaders.cards_loader import CardsLoader
+
+
+class CardsRetriever(KeywordRetriever):
+    def __init__(self):
+        super().__init__(loader=CardsLoader())
+
+-------------------------------------------------------------------------------------------------
+keyword_scoring.py
+
+"""
+retrievers/keyword_scoring.py
+
+WHAT THIS FILE DOES
+--------------------
+A small, dependency-free scoring function: given a user query and a
+Record's search_text, returns a relevance score (higher = more
+relevant). This is Phase 1's ENTIRE retrieval "algorithm" -- no
+embeddings, no vector database, just counting overlapping words.
+
+WHY IT EXISTS AS ITS OWN FILE
+------------------------------
+Every source-specific retriever (cards, offers, campaigns) needs the
+SAME scoring logic -- only the data differs. Putting it here once
+means:
+  1. All retrievers score consistently.
+  2. If you later want to upgrade Phase 1's matching (e.g. add fuzzy
+     matching, or handle Arabic stemming), you change ONE function
+     and every retriever benefits immediately.
+
+HOW IT WORKS (intentionally simple, on purpose)
+------------------------------------------------
+1. Lowercase and split the query into individual words ("tokens").
+2. For each Record, count how many of those query words appear
+   anywhere in its search_text.
+3. That count IS the score. Records with score 0 are considered
+   irrelevant and dropped.
+
+This is a bag-of-words / keyword-overlap approach -- the simplest
+possible form of "search" without any ML. It's intentionally naive:
+Phase 1's goal is to prove the end-to-end loop works, not to have
+great retrieval quality yet. Phase 2's re-ranker and dynamic router
+will make this smarter.
+
+INPUTS  : query (str), a Record's search_text (str)
+OUTPUTS : an integer score
+"""
+
+import re
+
+# Very short, common English words add noise to keyword matching
+# (e.g. matching on "the", "is", "a" would make almost every record
+# score > 0). We filter these out before scoring.
+STOPWORDS = {
+    "the", "a", "an", "is", "are", "was", "were", "what", "which",
+    "who", "whom", "this", "that", "of", "for", "on", "in", "to",
+    "do", "does", "can", "i", "me", "my", "you", "your", "it", "its",
+    "and", "or", "with", "about", "have", "has", "there", "any",
+}
+
+
+def tokenize(text: str) -> list[str]:
+    """Lowercase and split into word tokens, dropping punctuation and stopwords."""
+    words = re.findall(r"[a-zA-Z0-9%]+", text.lower())
+    return [w for w in words if w not in STOPWORDS]
+
+
+def score(query: str, search_text: str) -> int:
+    """
+    Return the number of query tokens that appear in search_text.
+    A score of 0 means "no overlap -- not relevant".
+    """
+    query_tokens = set(tokenize(query))
+    if not query_tokens:
+        return 0
+    matches = sum(1 for token in query_tokens if token in search_text)
+    return matches
+
+-------------------------------------------------------------------------------------------------
+offers_retriever.py
+
+"""
+retrievers/offers_retriever.py
+
+WHAT THIS FILE DOES
+--------------------
+The keyword retriever for the "offers" source (installment plans +
+discounts). All the real logic lives in KeywordRetriever (see
+base_retriever.py) -- this file just tells it to load its data from
+OffersLoader.
+
+INPUTS  : query (str)
+OUTPUTS : list[Record] -- the most relevant offer records, best first
+"""
+
+from retrievers.base_retriever import KeywordRetriever
+from loaders.offers_loader import OffersLoader
+
+
+class OffersRetriever(KeywordRetriever):
+    def __init__(self):
+        super().__init__(loader=OffersLoader())
+
+
+}
+
+pipelineCode.txt 
+{
+    context_builder.py
+
+
+"""
+pipeline/context_builder.py
+
+WHAT THIS FILE DOES
+--------------------
+Takes the Records returned by the retrievers (a list of structured
+objects) and turns them into ONE plain-text block that gets inserted
+into the prompt sent to the LLM.
+
+WHY IT EXISTS AS ITS OWN STEP
+--------------------------------
+Retrieval (finding the right records) and context formatting
+(turning records into LLM-readable text) are two different concerns.
+Keeping them separate means:
+  - You can change HOW retrieved data is displayed to the LLM
+    (e.g. add source labels, reorder, truncate long records) without
+    touching any retriever.
+  - Phase 2's re-ranker/CRAG steps can filter or reorder the list of
+    Records BEFORE it reaches this function, and this function
+    doesn't need to know or care that happened.
+
+INPUTS  : list[Record] -- already-retrieved, already-ranked records
+OUTPUTS : a single string, formatted with clear source labels,
+          ready to drop into the user prompt
+"""
+
+from loaders.record import Record
+
+# Human-readable labels for each source, used as section headers in
+# the context block so the LLM (and you, when debugging) can see
+# where each piece of information came from.
+SOURCE_LABELS = {
+    "cards": "CREDIT CARD PRODUCTS",
+    "offers_installment": "MERCHANT INSTALLMENT OFFERS",
+    "offers_discount": "MERCHANT DISCOUNT OFFERS",
+    "campaigns": "CAMPAIGNS",
+}
+
+
+def build_context(records: list[Record]) -> str:
+    """
+    Group records by source and render each as a labeled section,
+    e.g.:
+
+        === CREDIT CARD PRODUCTS ===
+        Card: VISA INFINITE
+        - Minimum limit: ...
+        ...
+
+        === CAMPAIGNS ===
+        Campaign: Egypt Air July 2026 Installment Campaign
+        ...
+
+    Returns an empty string if no records were retrieved.
+    """
+    if not records:
+        return ""
+
+    grouped: dict[str, list[Record]] = {}
+    for r in records:
+        grouped.setdefault(r.source, []).append(r)
+
+    sections = []
+    for source, source_records in grouped.items():
+        label = SOURCE_LABELS.get(source, source.upper())
+        block_lines = [f"=== {label} ==="]
+        for r in source_records:
+            block_lines.append(r.display_text)
+            block_lines.append("")  # blank line between records
+        sections.append("\n".join(block_lines).strip())
+
+    return "\n\n".join(sections)
+
+------------------------------------------------------------------------------------------------------
+prompt_template.py
+
+
+"""
+pipeline/prompt_templates.py
+
+WHAT THIS FILE DOES
+--------------------
+Holds every piece of TEXT we send to the LLM: the system prompt
+(instructions/persona) and the user prompt template (how we present
+retrieved context + the question). No logic lives here, only strings
+and simple string-formatting functions.
+
+WHY IT EXISTS AS ITS OWN FILE
+--------------------------------
+Prompt wording is something you'll tune constantly while testing --
+tightening instructions, adding guardrail language, adjusting tone.
+Keeping it separate from rag_pipeline.py means you (or your partner)
+can edit HOW the bot talks without touching the code that decides
+WHAT data it sees. It also makes it trivial to compare two prompt
+versions side by side later, or A/B test them in the evaluation
+pipeline (Phase 2).
+
+INPUTS  : retrieved context (str), conversation/question (str)
+OUTPUTS : ready-to-send prompt strings
+"""
+
+SYSTEM_PROMPT = """You are a helpful assistant for Banque Misr's retail banking \
+customers. You answer questions about credit cards, merchant offers \
+(installments and discounts), and ongoing campaigns.
+
+Rules you must follow:
+1. Base your answer ONLY on the "Retrieved information" provided below, \
+except for general banking knowledge questions (e.g. "what is APR", \
+"how does a credit card work") where you may use your own knowledge.
+2. If the retrieved information does not contain the answer, say so \
+clearly instead of guessing or making up numbers, fees, or dates.
+3. Be concise and direct. Use bullet points for lists of terms/fees.
+4. Never invent a card name, merchant name, fee, or date that is not \
+present in the retrieved information.
+"""
+
+
+def build_user_prompt(question: str, context_text: str) -> str:
+    """
+    Combine the retrieved context and the user's question into the
+    final prompt sent to the LLM.
+
+    If context_text is empty (no source matched anything), we still
+    send the question but flag that nothing was retrieved, so the
+    LLM leans on rule #1 above (general knowledge only, or say it
+    doesn't have specific info).
+    """
+    if context_text.strip():
+        return (
+            f"Retrieved information:\n"
+            f"{context_text}\n\n"
+            f"---\n"
+            f"Customer question: {question}"
+        )
+    else:
+        return (
+            f"Retrieved information: (nothing matched this question in our "
+            f"cards, offers, or campaigns data)\n\n"
+            f"---\n"
+            f"Customer question: {question}"
+        )
+
+------------------------------------------------------------------------------------------------------
+rag_pipeline.py
+
+"""
+pipeline/rag_pipeline.py
+
+WHAT THIS FILE DOES
+--------------------
+This is the "conductor" that runs one full question-answering turn:
+
+    user question
+        -> ask EVERY retriever for its best matches (cards, offers, campaigns)
+        -> merge the results into one context block
+        -> build the final prompt
+        -> call the LLM
+        -> return the answer (plus the retrieved records, for transparency)
+
+WHY PHASE 1's FLOW IS "DUMB" ON PURPOSE
+-------------------------------------------
+Notice this pipeline does NOT decide which source is relevant --
+it queries ALL of them, every time, and lets the keyword scores
+naturally return nothing (empty list) from sources that don't match.
+That's intentional: Phase 1's goal is a working, understandable
+baseline. Phase 2 replaces "ask everyone" with an `agent/router.py`
+step that uses the LLM to decide which source(s) to query -- but
+that step will simply choose WHICH of these same retrievers to call.
+Nothing here needs to be rewritten for that upgrade, only the
+decision of which retrievers to invoke.
+
+WHY WE RETURN retrieved_records TOO, NOT JUST THE ANSWER
+------------------------------------------------------------
+Returning what was actually retrieved (not just the final text) is
+essential for you to debug/understand the system, and it's exactly
+what Phase 2's pipeline_logger.py will start writing to a log file
+automatically.
+
+INPUTS  : question (str) -- the user's message
+OUTPUTS : a dict: {
+            "answer": str,
+            "retrieved_records": list[Record],
+            "context_text": str,
+          }
+"""
+
+from retrievers.cards_retriever import CardsRetriever
+from retrievers.offers_retriever import OffersRetriever
+from retrievers.campaigns_retriever import CampaignsRetriever
+from pipeline.context_builder import build_context
+from pipeline.prompt_templates import SYSTEM_PROMPT, build_user_prompt
+from llm.llm_client import LLMClient
+from config.settings import MAX_RESULTS_PER_SOURCE
+
+
+class RagPipeline:
+    def __init__(self):
+        # Each retriever loads its own data once here. If you add a new
+        # source later, add one line here and one line in `_retrieve_all`
+        # -- nothing else in this class changes.
+        self.cards_retriever = CardsRetriever()
+        self.offers_retriever = OffersRetriever()
+        self.campaigns_retriever = CampaignsRetriever()
+        self.llm_client = LLMClient()
+
+    def answer(self, question: str) -> dict:
+        retrieved_records = self._retrieve_all(question)
+        context_text = build_context(retrieved_records)
+        user_prompt = build_user_prompt(question, context_text)
+
+        answer_text = self.llm_client.generate(
+            system_prompt=SYSTEM_PROMPT,
+            user_prompt=user_prompt,
+        )
+
+        return {
+            "answer": answer_text,
+            "retrieved_records": retrieved_records,
+            "context_text": context_text,
+        }
+
+    def _retrieve_all(self, question: str) -> list:
+        """
+        Query every retriever with the raw question and merge the results.
+        Each retriever independently returns [] if nothing matched, so
+        merging is just concatenation -- no source is ever forced into
+        the context if it found nothing relevant.
+        """
+        records = []
+        records.extend(self.cards_retriever.retrieve(question, MAX_RESULTS_PER_SOURCE))
+        records.extend(self.offers_retriever.retrieve(question, MAX_RESULTS_PER_SOURCE))
+        records.extend(self.campaigns_retriever.retrieve(question, MAX_RESULTS_PER_SOURCE))
+        return records
+
+}
+
+loadersCode.txt
+{
+    base_loader.py
+
+"""
+loaders/base_loader.py
+
+WHAT THIS FILE DOES
+--------------------
+Defines the abstract "shape" every loader must follow: a `load()`
+method that takes no arguments and returns a `list[Record]`.
+
+WHY IT EXISTS
+-------------
+This is a contract, not working code. Python won't let you create an
+instance of BaseLoader directly (it will raise an error), only its
+subclasses (CardsLoader, OffersLoader, CampaignsLoader). This
+guarantees that anyone writing a new loader in the future -- for
+example, if you add a "General Information" document later -- knows
+exactly what method to implement, and the rest of the pipeline can
+call `.load()` on ANY loader without knowing which one it is.
+
+This is the classic "program to an interface, not an implementation"
+principle, and it's what makes it safe to add/remove/replace a data
+source without touching any other file.
+
+INPUTS  : none (abstract class)
+OUTPUTS : none (abstract class) -- subclasses return list[Record]
+"""
+
+from abc import ABC, abstractmethod
+from loaders.record import Record
+
+
+class BaseLoader(ABC):
+    """Every concrete loader (CardsLoader, OffersLoader, ...) inherits this."""
+
+    @abstractmethod
+    def load(self) -> list[Record]:
+        """
+        Read the raw source file and return a list of normalized Record objects.
+        Must be implemented by every subclass.
+        """
+        raise NotImplementedError
+
+------------------------------------------------------------------------------------------------------
+campaigns_loader.py
+
+"""
+loaders/campaigns_loader.py
+
+WHAT THIS FILE DOES
+--------------------
+Reads campaigns_clean.json and converts each JSON campaign object
+into a Record.
+
+WHAT THE RAW FILE LOOKS LIKE
+------------------------------
+This is the easiest source to load because it's already structured
+and even ships with a "query_tags" list -- keywords the data owner
+already thought were useful for search. Each entry has fields like
+campaign_name, campaign_status, campaign_start/end_date,
+target_entity_value, eligible/excluded card segments, and a nested
+"details" dict with the fine print (installment months, cashback
+amounts, etc).
+
+We keep the ENTIRE original JSON object in metadata (nothing is
+thrown away), and build display_text/search_text from the
+human-readable parts (name, dates, tags, details) rather than
+source_text, since source_text is a long raw bilingual paragraph
+that's redundant with the structured fields.
+
+INPUTS  : the JSON file at config.settings.CAMPAIGNS_JSON_PATH
+OUTPUTS : list[Record], one per campaign
+"""
+
+import json
+
+from loaders.base_loader import BaseLoader
+from loaders.record import Record
+from config.settings import CAMPAIGNS_JSON_PATH
+
+
+class CampaignsLoader(BaseLoader):
+    def load(self) -> list[Record]:
+        with open(CAMPAIGNS_JSON_PATH, "r", encoding="utf-8") as f:
+            campaigns = json.load(f)
+
+        records = []
+        for c in campaigns:
+            records.append(
+                Record(
+                    id=c.get("id", ""),
+                    source="campaigns",
+                    title=c.get("campaign_name", "Unnamed campaign"),
+                    search_text=self._build_search_text(c),
+                    display_text=self._build_display_text(c),
+                    metadata=c,  # keep the full original record -- nothing dropped
+                )
+            )
+        return records
+
+    @staticmethod
+    def _build_display_text(c: dict) -> str:
+        details = c.get("details", {})
+        details_lines = "\n".join(f"  - {k}: {v}" for k, v in details.items())
+
+        return (
+            f"Campaign: {c.get('campaign_name')}\n"
+            f"Status: {c.get('campaign_status')}\n"
+            f"Applies to: {c.get('target_entity_type')} = {c.get('target_entity_value')}\n"
+            f"Valid: {c.get('campaign_start_date') or 'no start date listed'} "
+            f"to {c.get('campaign_end_date') or 'no end date listed'}\n"
+            f"Eligible card segments: {', '.join(c.get('eligible_card_segments', []))}\n"
+            f"Excluded card segments: {', '.join(c.get('excluded_card_segments', []))}\n"
+            f"Channels: {', '.join(c.get('channels', []))}\n"
+            f"Details:\n{details_lines}"
+        )
+
+    @staticmethod
+    def _build_search_text(c: dict) -> str:
+        parts = [
+            c.get("campaign_name", ""),
+            c.get("target_entity_value", ""),
+            c.get("campaign_category", ""),
+            " ".join(c.get("query_tags", [])),
+            " ".join(c.get("eligible_card_segments", [])),
+        ]
+        return " ".join(str(p) for p in parts if p).lower()
+
+
+------------------------------------------------------------------------------------------------------
+cards_loader.py
+
+"""
+loaders/cards_loader.py
+
+WHAT THIS FILE DOES
+--------------------
+Reads the "Credit card" sheet of the product catalog Excel file and
+converts it into a list of Record objects, one per credit card
+product (e.g. "VISA INFINITE", "MASTERCARD ISLAMIC GOLD").
+
+WHAT THE RAW SHEET LOOKS LIKE (so the parsing logic below makes sense)
+------------------------------------------------------------------
+- It is a WIDE table: each ROW is one card product, and there are
+  ~366 COLUMNS, one per business attribute (min limit, max limit,
+  fees, terms of use, benefits, etc). Many attribute names repeat
+  across several columns (e.g. "Benefits" appears 40 times, because
+  each benefit is listed as its own column) -- we disambiguate those
+  with a counter, e.g. "Benefits #1", "Benefits #2".
+- Row 2 holds the English column headers. Rows 1 and 3 hold extra
+  formatting/Arabic-label rows we don't need. Rows 4-5 are a
+  worked example / legend ("Description", "Description translate to
+  arabic") -- not real data. Real product rows start at row 6.
+- Column A = a "Serial"/grouping number, Column C = Product Code,
+  Column D = Product Name (English).
+
+INPUTS  : the Excel file at config.settings.CARDS_XLSX_PATH
+OUTPUTS : list[Record], one per credit card product, where
+            - metadata holds every non-empty {attribute: value} pair
+            - display_text is a clean "Attribute: Value" listing for the LLM
+            - search_text is a lowercase blob for Phase 1 keyword matching
+"""
+
+import openpyxl
+from collections import Counter
+
+from loaders.base_loader import BaseLoader
+from loaders.record import Record
+from config.settings import CARDS_XLSX_PATH
+
+SHEET_NAME = "Credit card"
+HEADER_ROW = 2
+FIRST_DATA_ROW = 6  # rows 4-5 are a worked example/legend, not real products
+
+PRODUCT_CODE_COL = 3   # column C
+PRODUCT_NAME_COL = 4   # column D
+
+
+class CardsLoader(BaseLoader):
+    def load(self) -> list[Record]:
+        wb = openpyxl.load_workbook(CARDS_XLSX_PATH, data_only=True)
+        ws = wb[SHEET_NAME]
+
+        headers = self._build_disambiguated_headers(ws)
+
+        records: list[Record] = []
+        for row_idx in range(FIRST_DATA_ROW, ws.max_row + 1):
+            product_code = ws.cell(row_idx, PRODUCT_CODE_COL).value
+            product_name = ws.cell(row_idx, PRODUCT_NAME_COL).value
+
+            # Skip rows that aren't real products (blank rows, stray legend rows)
+            if product_code in (None, "") or product_name in (None, ""):
+                continue
+
+            attributes = {}
+            for col_idx, header in enumerate(headers, start=1):
+                if header is None:
+                    continue
+                value = ws.cell(row_idx, col_idx).value
+                if value in (None, ""):
+                    continue
+                attributes[header] = value
+
+            display_text = self._build_display_text(product_name, attributes)
+            search_text = self._build_search_text(product_name, attributes)
+
+            records.append(
+                Record(
+                    id=f"card_{product_code}",
+                    source="cards",
+                    title=str(product_name).strip(),
+                    search_text=search_text,
+                    display_text=display_text,
+                    metadata=attributes,
+                )
+            )
+
+        return records
+
+    @staticmethod
+    def _build_disambiguated_headers(ws) -> list[str]:
+        """
+        Row 2 has the attribute name for every column, but many names repeat
+        (e.g. "Benefits" x40). We append a counter so each header is unique,
+        e.g. "Benefits #1", "Benefits #2", ... This keeps every column's data
+        instead of silently overwriting earlier columns with the same name.
+        """
+        raw_headers = [ws.cell(HEADER_ROW, c).value for c in range(1, ws.max_column + 1)]
+        seen = Counter()
+        unique_headers = []
+        for h in raw_headers:
+            if h is None:
+                unique_headers.append(None)
+                continue
+            h_clean = str(h).strip()
+            seen[h_clean] += 1
+            if seen[h_clean] > 1:
+                unique_headers.append(f"{h_clean} #{seen[h_clean]}")
+            else:
+                unique_headers.append(h_clean)
+        return unique_headers
+
+    @staticmethod
+    def _build_display_text(product_name, attributes: dict) -> str:
+        lines = [f"Card: {product_name}"]
+        for k, v in attributes.items():
+            lines.append(f"- {k}: {v}")
+        return "\n".join(lines)
+
+    @staticmethod
+    def _build_search_text(product_name, attributes: dict) -> str:
+        parts = [str(product_name)]
+        parts.extend(str(v) for v in attributes.values())
+        return " ".join(parts).lower()
+
+------------------------------------------------------------------------------------------------------
+offers_loader.py
+
+"""
+loaders/offers_loader.py
+
+WHAT THIS FILE DOES
+--------------------
+Reads the two sheets of the offers Excel file and converts each row
+into a Record:
+  1. "Nov. Installment Arb - Eng"   -> merchant installment plans
+  2. "Nov. Discount Offer,Arb-Eng"  -> merchant discounts
+
+WHAT THE RAW SHEETS LOOK LIKE
+------------------------------
+Both are FLAT tables (one row = one merchant offer), unlike the wide
+cards sheet. Columns:
+  Installment sheet : merchant name | installment duration (Arabic) |
+                       terms (Arabic) | terms (English) | category
+  Discount sheet     : merchant name | terms (Arabic) | terms (English) | category
+
+We keep both the Arabic and English terms in metadata (some merchants
+in this bank's data are more clearly described in one language than
+the other) but build display_text/search_text primarily from the
+English column plus merchant name and category.
+
+INPUTS  : the Excel file at config.settings.OFFERS_XLSX_PATH
+OUTPUTS : list[Record], one per merchant offer row (installment or discount)
+"""
+
+import openpyxl
+
+from loaders.base_loader import BaseLoader
+from loaders.record import Record
+from config.settings import OFFERS_XLSX_PATH
+
+INSTALLMENT_SHEET = "Nov. Installment Arb - Eng"
+DISCOUNT_SHEET = "Nov. Discount Offer,Arb-Eng "  # note: trailing space in real sheet name
+
+
+class OffersLoader(BaseLoader):
+    def load(self) -> list[Record]:
+        wb = openpyxl.load_workbook(OFFERS_XLSX_PATH, data_only=True)
+        records: list[Record] = []
+        records.extend(self._load_installment_sheet(wb))
+        records.extend(self._load_discount_sheet(wb))
+        return records
+
+    def _load_installment_sheet(self, wb) -> list[Record]:
+        # Sheet name has slight naming inconsistencies in the source file,
+        # so we look it up case/space-insensitively instead of hardcoding
+        # the exact match, to make this loader resilient to small typos
+        # in future versions of the same file.
+        ws = self._find_sheet(wb, "installment")
+        if ws is None:
+            return []
+
+        records = []
+        for row_idx in range(2, ws.max_row + 1):  # row 1 = header
+            merchant = ws.cell(row_idx, 1).value
+            duration_ar = ws.cell(row_idx, 2).value
+            terms_ar = ws.cell(row_idx, 3).value
+            terms_en = ws.cell(row_idx, 4).value
+            category = ws.cell(row_idx, 5).value
+
+            if merchant in (None, ""):
+                continue
+
+            merchant = str(merchant).strip()
+            terms_en = (str(terms_en).strip() if terms_en else "")
+            category = (str(category).strip() if category else "")
+
+            display_text = (
+                f"Merchant: {merchant}\n"
+                f"Offer type: Installment\n"
+                f"Category: {category}\n"
+                f"Terms (English): {terms_en}\n"
+                f"Installment duration (as listed, Arabic): {duration_ar or ''}"
+            )
+            search_text = " ".join(
+                str(x) for x in [merchant, category, terms_en, duration_ar, terms_ar] if x
+            ).lower()
+
+            records.append(
+                Record(
+                    id=f"offer_installment_{row_idx}_{merchant}",
+                    source="offers_installment",
+                    title=f"{merchant} - Installment Offer",
+                    search_text=search_text,
+                    display_text=display_text,
+                    metadata={
+                        "merchant": merchant,
+                        "category": category,
+                        "terms_english": terms_en,
+                        "terms_arabic": terms_ar,
+                        "duration_arabic": duration_ar,
+                    },
+                )
+            )
+        return records
+
+    def _load_discount_sheet(self, wb) -> list[Record]:
+        ws = self._find_sheet(wb, "discount")
+        if ws is None:
+            return []
+
+        records = []
+        for row_idx in range(2, ws.max_row + 1):  # row 1 = header
+            merchant = ws.cell(row_idx, 1).value
+            terms_ar = ws.cell(row_idx, 2).value
+            terms_en = ws.cell(row_idx, 3).value
+            category = ws.cell(row_idx, 4).value
+
+            if merchant in (None, ""):
+                continue
+
+            merchant = str(merchant).strip()
+            terms_en = (str(terms_en).strip() if terms_en else "")
+            category = (str(category).strip() if category else "")
+
+            display_text = (
+                f"Merchant: {merchant}\n"
+                f"Offer type: Discount\n"
+                f"Category: {category}\n"
+                f"Terms (English): {terms_en}"
+            )
+            search_text = " ".join(
+                str(x) for x in [merchant, category, terms_en, terms_ar] if x
+            ).lower()
+
+            records.append(
+                Record(
+                    id=f"offer_discount_{row_idx}_{merchant}",
+                    source="offers_discount",
+                    title=f"{merchant} - Discount Offer",
+                    search_text=search_text,
+                    display_text=display_text,
+                    metadata={
+                        "merchant": merchant,
+                        "category": category,
+                        "terms_english": terms_en,
+                        "terms_arabic": terms_ar,
+                    },
+                )
+            )
+        return records
+
+    @staticmethod
+    def _find_sheet(wb, keyword: str):
+        """Find a sheet whose name contains `keyword`, ignoring case/whitespace."""
+        keyword = keyword.lower()
+        for name in wb.sheetnames:
+            if keyword in name.lower():
+                return wb[name]
+        return None
+
+------------------------------------------------------------------------------------------------------
+record.py
+
+"""
+loaders/record.py
+
+WHAT THIS FILE DOES
+--------------------
+Defines ONE simple data shape, called `Record`, that every loader in
+this project must produce and every retriever must consume.
+
+WHY IT EXISTS
+-------------
+We have 3 very different raw files (a wide Excel sheet, a flat Excel
+sheet, a nested JSON file). If every loader returned data in its own
+custom shape, the rest of the pipeline (retrievers, context builder)
+would need special-case code for each source. Instead, every loader
+translates its messy source into this ONE common shape. After that
+point, nothing downstream needs to know or care whether a Record
+originally came from Excel or JSON.
+
+This is the single most important design decision for modularity:
+it's the "plug" that lets us swap any loader or retriever without
+touching the rest of the system.
+
+FIELDS
+------
+id            : str  - unique identifier for this record within its source
+source        : str  - which source this came from, e.g. "cards", "offers_installment"
+title         : str  - short human-readable name (card name / merchant name / campaign name)
+search_text   : str  - a lowercase blob of text used for simple keyword matching in Phase 1
+display_text  : str  - a clean, readable version of the full record, used as LLM context
+metadata      : dict - the original structured fields, kept in case Phase 2 needs to
+                        filter/sort/rerank by specific fields (e.g. card segment, dates)
+
+INPUTS  : none (this is just a data class)
+OUTPUTS : the Record type, imported by every loader and retriever
+"""
+
+from dataclasses import dataclass, field
+
+
+@dataclass
+class Record:
+    id: str
+    source: str
+    title: str
+    search_text: str
+    display_text: str
+    metadata: dict = field(default_factory=dict)
+
+    def to_dict(self) -> dict:
+        """Convert to a plain dict, e.g. for caching to JSON or for logging."""
+        return {
+            "id": self.id,
+            "source": self.source,
+            "title": self.title,
+            "search_text": self.search_text,
+            "display_text": self.display_text,
+            "metadata": self.metadata,
+        }
+
+    @staticmethod
+    def from_dict(d: dict) -> "Record":
+        """Rebuild a Record from a plain dict, e.g. when loading a cache file."""
+        return Record(
+            id=d["id"],
+            source=d["source"],
+            title=d["title"],
+            search_text=d["search_text"],
+            display_text=d["display_text"],
+            metadata=d.get("metadata", {}),
+        )
+
+------------------------------------------------------------------------------------------------------
+
+}
+
+llmCode.txt
+{
+    llm_client.py
+
+
+"""
+llm/llm_client.py
+
+WHAT THIS FILE DOES
+--------------------
+A thin wrapper around Ollama's local HTTP API. Every other module in
+this project calls `LLMClient().generate(...)` and never talks to
+Ollama's HTTP endpoint directly.
+
+WHY IT EXISTS
+-------------
+If we scattered `requests.post("http://localhost:11434/...")` calls
+across the pipeline, agent, and evaluation code, switching to a
+different model runtime later (e.g. a hosted API, or vLLM) would mean
+hunting through every file. Instead, EVERY OTHER MODULE only depends
+on this class's `generate(system_prompt, user_prompt)` method. Swap
+what happens *inside* generate() and nothing else in the project needs
+to change.
+
+HOW OLLAMA WORKS (briefly)
+----------------------------
+Ollama runs a local server (started with `ollama serve`, or
+automatically when you run `ollama run <model>`) that exposes a
+simple JSON HTTP API at http://localhost:11434. We use the
+`/api/chat` endpoint, which accepts a list of {role, content}
+messages -- same shape as OpenAI/Anthropic chat APIs -- and returns
+the model's reply.
+
+INPUTS  : system_prompt (str), user_prompt (str)
+OUTPUTS : the model's reply as a plain string
+
+REQUIRES: Ollama installed and running locally (`ollama serve`),
+          with the model in config.settings.OLLAMA_MODEL already
+          pulled (`ollama pull llama3.1:8b`, or whichever you set).
+"""
+
+import requests
+
+from config.settings import (
+    OLLAMA_BASE_URL,
+    OLLAMA_MODEL,
+    OLLAMA_TIMEOUT_SECONDS,
+    LLM_TEMPERATURE,
+)
+
+
+class LLMClient:
+    def __init__(self, model: str = None):
+        # Allow overriding the model per-instance (useful later if, say,
+        # the CRAG-judge step in Phase 2 wants a different/smaller model
+        # than the final answer-writing step).
+        self.model = model or OLLAMA_MODEL
+
+    def generate(self, system_prompt: str, user_prompt: str) -> str:
+        """
+        Send a system+user prompt pair to the local Ollama model and
+        return its text reply. Raises a clear RuntimeError if Ollama
+        isn't reachable, instead of a confusing low-level exception.
+        """
+        url = f"{OLLAMA_BASE_URL}/api/chat"
+        payload = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            "stream": False,
+            "options": {
+                "temperature": LLM_TEMPERATURE,
+            },
+        }
+
+        try:
+            response = requests.post(url, json=payload, timeout=OLLAMA_TIMEOUT_SECONDS)
+            response.raise_for_status()
+        except requests.exceptions.ConnectionError as e:
+            raise RuntimeError(
+                f"Could not reach Ollama at {OLLAMA_BASE_URL}. "
+                f"Is Ollama running? Try `ollama serve` in a terminal, "
+                f"and make sure you've pulled the model with "
+                f"`ollama pull {self.model}`."
+            ) from e
+        except requests.exceptions.HTTPError as e:
+            raise RuntimeError(
+                f"Ollama returned an error for model '{self.model}'. "
+                f"Have you run `ollama pull {self.model}`? Details: {e}"
+            ) from e
+
+        data = response.json()
+        # /api/chat with stream=False returns {"message": {"role": ..., "content": ...}, ...}
+        return data["message"]["content"]
+
+}
+
+appCode.txt
+{
+    server.py
+
+"""
+app/server.py
+
+WHAT THIS FILE DOES
+--------------------
+A minimal Flask web server with two routes:
+  GET  /          -> serves the chat page (index.html)
+  POST /api/chat  -> receives {"message": "..."}, runs it through
+                      RagPipeline, and returns {"answer": "...", "sources": [...]}
+
+WHY IT EXISTS AS A THIN LAYER
+---------------------------------
+The frontend is explicitly "not the main focus" per the project
+requirements -- the RAG/retrieval system is. So this file does the
+minimum needed to expose the pipeline over HTTP: no sessions, no
+database, no auth. It creates ONE RagPipeline instance at startup
+(so data isn't reloaded from Excel/JSON on every request) and calls
+`.answer(question)` on each incoming message.
+
+INPUTS  : HTTP requests from the browser
+OUTPUTS : HTML page (GET /) and JSON answers (POST /api/chat)
+"""
+
+from flask import Flask, request, jsonify, render_template
+
+from pipeline.rag_pipeline import RagPipeline
+from config.settings import FLASK_HOST, FLASK_PORT, FLASK_DEBUG
+
+app = Flask(__name__)
+
+# Created once at startup: loading all three data sources takes a
+# moment, so we don't want to redo it on every single chat message.
+pipeline = RagPipeline()
+
+
+@app.route("/")
+def index():
+    return render_template("index.html")
+
+
+@app.route("/api/chat", methods=["POST"])
+def chat():
+    data = request.get_json(silent=True) or {}
+    question = (data.get("message") or "").strip()
+
+    if not question:
+        return jsonify({"error": "Empty message"}), 400
+
+    try:
+        result = pipeline.answer(question)
+    except RuntimeError as e:
+        # Most likely Ollama isn't running -- return a clear error the
+        # frontend can display, instead of a raw 500 stack trace.
+        return jsonify({"error": str(e)}), 503
+
+    # We send back which sources/titles were used, purely so the UI
+    # can show "based on: VISA INFINITE, Egypt Air Campaign" -- this
+    # is optional transparency, not required for the bot to work.
+    sources = [
+        {"source": r.source, "title": r.title} for r in result["retrieved_records"]
+    ]
+
+    return jsonify({"answer": result["answer"], "sources": sources})
+
+
+if __name__ == "__main__":
+    app.run(host=FLASK_HOST, port=FLASK_PORT, debug=FLASK_DEBUG)
+
+
+------------------------------------------------------------------------------------------------------
+run.py
+
+"""
+run.py
+
+WHAT THIS FILE DOES
+--------------------
+The single command to start the whole application:
+    python run.py
+
+It just imports the Flask app object from app/server.py and runs it.
+Kept separate from app/server.py itself so that server.py can also be
+imported by tests or other scripts without automatically starting a
+web server.
+
+REQUIRES: Ollama running locally (`ollama serve`) with the model from
+          config/settings.py already pulled.
+"""
+
+from app.server import app
+from config.settings import FLASK_HOST, FLASK_PORT, FLASK_DEBUG
+
+if __name__ == "__main__":
+    print(f"Starting BM Retail Banking Assistant on http://{FLASK_HOST}:{FLASK_PORT}")
+    app.run(host=FLASK_HOST, port=FLASK_PORT, debug=FLASK_DEBUG)
+
+}

@@ -1,0 +1,486 @@
+base_loader.py
+
+"""
+loaders/base_loader.py
+
+WHAT THIS FILE DOES
+--------------------
+Defines the abstract "shape" every loader must follow: a `load()`
+method that takes no arguments and returns a `list[Record]`.
+
+WHY IT EXISTS
+-------------
+This is a contract, not working code. Python won't let you create an
+instance of BaseLoader directly (it will raise an error), only its
+subclasses (CardsLoader, OffersLoader, CampaignsLoader). This
+guarantees that anyone writing a new loader in the future -- for
+example, if you add a "General Information" document later -- knows
+exactly what method to implement, and the rest of the pipeline can
+call `.load()` on ANY loader without knowing which one it is.
+
+This is the classic "program to an interface, not an implementation"
+principle, and it's what makes it safe to add/remove/replace a data
+source without touching any other file.
+
+INPUTS  : none (abstract class)
+OUTPUTS : none (abstract class) -- subclasses return list[Record]
+"""
+
+from abc import ABC, abstractmethod
+from loaders.record import Record
+
+
+class BaseLoader(ABC):
+    """Every concrete loader (CardsLoader, OffersLoader, ...) inherits this."""
+
+    @abstractmethod
+    def load(self) -> list[Record]:
+        """
+        Read the raw source file and return a list of normalized Record objects.
+        Must be implemented by every subclass.
+        """
+        raise NotImplementedError
+
+------------------------------------------------------------------------------------------------------
+campaigns_loader.py
+
+"""
+loaders/campaigns_loader.py
+
+WHAT THIS FILE DOES
+--------------------
+Reads campaigns_clean.json and converts each JSON campaign object
+into a Record.
+
+WHAT THE RAW FILE LOOKS LIKE
+------------------------------
+This is the easiest source to load because it's already structured
+and even ships with a "query_tags" list -- keywords the data owner
+already thought were useful for search. Each entry has fields like
+campaign_name, campaign_status, campaign_start/end_date,
+target_entity_value, eligible/excluded card segments, and a nested
+"details" dict with the fine print (installment months, cashback
+amounts, etc).
+
+We keep the ENTIRE original JSON object in metadata (nothing is
+thrown away), and build display_text/search_text from the
+human-readable parts (name, dates, tags, details) rather than
+source_text, since source_text is a long raw bilingual paragraph
+that's redundant with the structured fields.
+
+INPUTS  : the JSON file at config.settings.CAMPAIGNS_JSON_PATH
+OUTPUTS : list[Record], one per campaign
+"""
+
+import json
+
+from loaders.base_loader import BaseLoader
+from loaders.record import Record
+from config.settings import CAMPAIGNS_JSON_PATH
+
+
+class CampaignsLoader(BaseLoader):
+    def load(self) -> list[Record]:
+        with open(CAMPAIGNS_JSON_PATH, "r", encoding="utf-8") as f:
+            campaigns = json.load(f)
+
+        records = []
+        for c in campaigns:
+            records.append(
+                Record(
+                    id=c.get("id", ""),
+                    source="campaigns",
+                    title=c.get("campaign_name", "Unnamed campaign"),
+                    search_text=self._build_search_text(c),
+                    display_text=self._build_display_text(c),
+                    metadata=c,  # keep the full original record -- nothing dropped
+                )
+            )
+        return records
+
+    @staticmethod
+    def _build_display_text(c: dict) -> str:
+        details = c.get("details", {})
+        details_lines = "\n".join(f"  - {k}: {v}" for k, v in details.items())
+
+        return (
+            f"Campaign: {c.get('campaign_name')}\n"
+            f"Status: {c.get('campaign_status')}\n"
+            f"Applies to: {c.get('target_entity_type')} = {c.get('target_entity_value')}\n"
+            f"Valid: {c.get('campaign_start_date') or 'no start date listed'} "
+            f"to {c.get('campaign_end_date') or 'no end date listed'}\n"
+            f"Eligible card segments: {', '.join(c.get('eligible_card_segments', []))}\n"
+            f"Excluded card segments: {', '.join(c.get('excluded_card_segments', []))}\n"
+            f"Channels: {', '.join(c.get('channels', []))}\n"
+            f"Details:\n{details_lines}"
+        )
+
+    @staticmethod
+    def _build_search_text(c: dict) -> str:
+        parts = [
+            c.get("campaign_name", ""),
+            c.get("target_entity_value", ""),
+            c.get("campaign_category", ""),
+            " ".join(c.get("query_tags", [])),
+            " ".join(c.get("eligible_card_segments", [])),
+        ]
+        return " ".join(str(p) for p in parts if p).lower()
+
+
+------------------------------------------------------------------------------------------------------
+cards_loader.py
+
+"""
+loaders/cards_loader.py
+
+WHAT THIS FILE DOES
+--------------------
+Reads the "Credit card" sheet of the product catalog Excel file and
+converts it into a list of Record objects, one per credit card
+product (e.g. "VISA INFINITE", "MASTERCARD ISLAMIC GOLD").
+
+WHAT THE RAW SHEET LOOKS LIKE (so the parsing logic below makes sense)
+------------------------------------------------------------------
+- It is a WIDE table: each ROW is one card product, and there are
+  ~366 COLUMNS, one per business attribute (min limit, max limit,
+  fees, terms of use, benefits, etc). Many attribute names repeat
+  across several columns (e.g. "Benefits" appears 40 times, because
+  each benefit is listed as its own column) -- we disambiguate those
+  with a counter, e.g. "Benefits #1", "Benefits #2".
+- Row 2 holds the English column headers. Rows 1 and 3 hold extra
+  formatting/Arabic-label rows we don't need. Rows 4-5 are a
+  worked example / legend ("Description", "Description translate to
+  arabic") -- not real data. Real product rows start at row 6.
+- Column A = a "Serial"/grouping number, Column C = Product Code,
+  Column D = Product Name (English).
+
+INPUTS  : the Excel file at config.settings.CARDS_XLSX_PATH
+OUTPUTS : list[Record], one per credit card product, where
+            - metadata holds every non-empty {attribute: value} pair
+            - display_text is a clean "Attribute: Value" listing for the LLM
+            - search_text is a lowercase blob for Phase 1 keyword matching
+"""
+
+import openpyxl
+from collections import Counter
+
+from loaders.base_loader import BaseLoader
+from loaders.record import Record
+from config.settings import CARDS_XLSX_PATH
+
+SHEET_NAME = "Credit card"
+HEADER_ROW = 2
+FIRST_DATA_ROW = 6  # rows 4-5 are a worked example/legend, not real products
+
+PRODUCT_CODE_COL = 3   # column C
+PRODUCT_NAME_COL = 4   # column D
+
+
+class CardsLoader(BaseLoader):
+    def load(self) -> list[Record]:
+        wb = openpyxl.load_workbook(CARDS_XLSX_PATH, data_only=True)
+        ws = wb[SHEET_NAME]
+
+        headers = self._build_disambiguated_headers(ws)
+
+        records: list[Record] = []
+        for row_idx in range(FIRST_DATA_ROW, ws.max_row + 1):
+            product_code = ws.cell(row_idx, PRODUCT_CODE_COL).value
+            product_name = ws.cell(row_idx, PRODUCT_NAME_COL).value
+
+            # Skip rows that aren't real products (blank rows, stray legend rows)
+            if product_code in (None, "") or product_name in (None, ""):
+                continue
+
+            attributes = {}
+            for col_idx, header in enumerate(headers, start=1):
+                if header is None:
+                    continue
+                value = ws.cell(row_idx, col_idx).value
+                if value in (None, ""):
+                    continue
+                attributes[header] = value
+
+            display_text = self._build_display_text(product_name, attributes)
+            search_text = self._build_search_text(product_name, attributes)
+
+            records.append(
+                Record(
+                    id=f"card_{product_code}",
+                    source="cards",
+                    title=str(product_name).strip(),
+                    search_text=search_text,
+                    display_text=display_text,
+                    metadata=attributes,
+                )
+            )
+
+        return records
+
+    @staticmethod
+    def _build_disambiguated_headers(ws) -> list[str]:
+        """
+        Row 2 has the attribute name for every column, but many names repeat
+        (e.g. "Benefits" x40). We append a counter so each header is unique,
+        e.g. "Benefits #1", "Benefits #2", ... This keeps every column's data
+        instead of silently overwriting earlier columns with the same name.
+        """
+        raw_headers = [ws.cell(HEADER_ROW, c).value for c in range(1, ws.max_column + 1)]
+        seen = Counter()
+        unique_headers = []
+        for h in raw_headers:
+            if h is None:
+                unique_headers.append(None)
+                continue
+            h_clean = str(h).strip()
+            seen[h_clean] += 1
+            if seen[h_clean] > 1:
+                unique_headers.append(f"{h_clean} #{seen[h_clean]}")
+            else:
+                unique_headers.append(h_clean)
+        return unique_headers
+
+    @staticmethod
+    def _build_display_text(product_name, attributes: dict) -> str:
+        lines = [f"Card: {product_name}"]
+        for k, v in attributes.items():
+            lines.append(f"- {k}: {v}")
+        return "\n".join(lines)
+
+    @staticmethod
+    def _build_search_text(product_name, attributes: dict) -> str:
+        parts = [str(product_name)]
+        parts.extend(str(v) for v in attributes.values())
+        return " ".join(parts).lower()
+
+------------------------------------------------------------------------------------------------------
+offers_loader.py
+
+"""
+loaders/offers_loader.py
+
+WHAT THIS FILE DOES
+--------------------
+Reads the two sheets of the offers Excel file and converts each row
+into a Record:
+  1. "Nov. Installment Arb - Eng"   -> merchant installment plans
+  2. "Nov. Discount Offer,Arb-Eng"  -> merchant discounts
+
+WHAT THE RAW SHEETS LOOK LIKE
+------------------------------
+Both are FLAT tables (one row = one merchant offer), unlike the wide
+cards sheet. Columns:
+  Installment sheet : merchant name | installment duration (Arabic) |
+                       terms (Arabic) | terms (English) | category
+  Discount sheet     : merchant name | terms (Arabic) | terms (English) | category
+
+We keep both the Arabic and English terms in metadata (some merchants
+in this bank's data are more clearly described in one language than
+the other) but build display_text/search_text primarily from the
+English column plus merchant name and category.
+
+INPUTS  : the Excel file at config.settings.OFFERS_XLSX_PATH
+OUTPUTS : list[Record], one per merchant offer row (installment or discount)
+"""
+
+import openpyxl
+
+from loaders.base_loader import BaseLoader
+from loaders.record import Record
+from config.settings import OFFERS_XLSX_PATH
+
+INSTALLMENT_SHEET = "Nov. Installment Arb - Eng"
+DISCOUNT_SHEET = "Nov. Discount Offer,Arb-Eng "  # note: trailing space in real sheet name
+
+
+class OffersLoader(BaseLoader):
+    def load(self) -> list[Record]:
+        wb = openpyxl.load_workbook(OFFERS_XLSX_PATH, data_only=True)
+        records: list[Record] = []
+        records.extend(self._load_installment_sheet(wb))
+        records.extend(self._load_discount_sheet(wb))
+        return records
+
+    def _load_installment_sheet(self, wb) -> list[Record]:
+        # Sheet name has slight naming inconsistencies in the source file,
+        # so we look it up case/space-insensitively instead of hardcoding
+        # the exact match, to make this loader resilient to small typos
+        # in future versions of the same file.
+        ws = self._find_sheet(wb, "installment")
+        if ws is None:
+            return []
+
+        records = []
+        for row_idx in range(2, ws.max_row + 1):  # row 1 = header
+            merchant = ws.cell(row_idx, 1).value
+            duration_ar = ws.cell(row_idx, 2).value
+            terms_ar = ws.cell(row_idx, 3).value
+            terms_en = ws.cell(row_idx, 4).value
+            category = ws.cell(row_idx, 5).value
+
+            if merchant in (None, ""):
+                continue
+
+            merchant = str(merchant).strip()
+            terms_en = (str(terms_en).strip() if terms_en else "")
+            category = (str(category).strip() if category else "")
+
+            display_text = (
+                f"Merchant: {merchant}\n"
+                f"Offer type: Installment\n"
+                f"Category: {category}\n"
+                f"Terms (English): {terms_en}\n"
+                f"Installment duration (as listed, Arabic): {duration_ar or ''}"
+            )
+            search_text = " ".join(
+                str(x) for x in [merchant, category, terms_en, duration_ar, terms_ar] if x
+            ).lower()
+
+            records.append(
+                Record(
+                    id=f"offer_installment_{row_idx}_{merchant}",
+                    source="offers_installment",
+                    title=f"{merchant} - Installment Offer",
+                    search_text=search_text,
+                    display_text=display_text,
+                    metadata={
+                        "merchant": merchant,
+                        "category": category,
+                        "terms_english": terms_en,
+                        "terms_arabic": terms_ar,
+                        "duration_arabic": duration_ar,
+                    },
+                )
+            )
+        return records
+
+    def _load_discount_sheet(self, wb) -> list[Record]:
+        ws = self._find_sheet(wb, "discount")
+        if ws is None:
+            return []
+
+        records = []
+        for row_idx in range(2, ws.max_row + 1):  # row 1 = header
+            merchant = ws.cell(row_idx, 1).value
+            terms_ar = ws.cell(row_idx, 2).value
+            terms_en = ws.cell(row_idx, 3).value
+            category = ws.cell(row_idx, 4).value
+
+            if merchant in (None, ""):
+                continue
+
+            merchant = str(merchant).strip()
+            terms_en = (str(terms_en).strip() if terms_en else "")
+            category = (str(category).strip() if category else "")
+
+            display_text = (
+                f"Merchant: {merchant}\n"
+                f"Offer type: Discount\n"
+                f"Category: {category}\n"
+                f"Terms (English): {terms_en}"
+            )
+            search_text = " ".join(
+                str(x) for x in [merchant, category, terms_en, terms_ar] if x
+            ).lower()
+
+            records.append(
+                Record(
+                    id=f"offer_discount_{row_idx}_{merchant}",
+                    source="offers_discount",
+                    title=f"{merchant} - Discount Offer",
+                    search_text=search_text,
+                    display_text=display_text,
+                    metadata={
+                        "merchant": merchant,
+                        "category": category,
+                        "terms_english": terms_en,
+                        "terms_arabic": terms_ar,
+                    },
+                )
+            )
+        return records
+
+    @staticmethod
+    def _find_sheet(wb, keyword: str):
+        """Find a sheet whose name contains `keyword`, ignoring case/whitespace."""
+        keyword = keyword.lower()
+        for name in wb.sheetnames:
+            if keyword in name.lower():
+                return wb[name]
+        return None
+
+------------------------------------------------------------------------------------------------------
+record.py
+
+"""
+loaders/record.py
+
+WHAT THIS FILE DOES
+--------------------
+Defines ONE simple data shape, called `Record`, that every loader in
+this project must produce and every retriever must consume.
+
+WHY IT EXISTS
+-------------
+We have 3 very different raw files (a wide Excel sheet, a flat Excel
+sheet, a nested JSON file). If every loader returned data in its own
+custom shape, the rest of the pipeline (retrievers, context builder)
+would need special-case code for each source. Instead, every loader
+translates its messy source into this ONE common shape. After that
+point, nothing downstream needs to know or care whether a Record
+originally came from Excel or JSON.
+
+This is the single most important design decision for modularity:
+it's the "plug" that lets us swap any loader or retriever without
+touching the rest of the system.
+
+FIELDS
+------
+id            : str  - unique identifier for this record within its source
+source        : str  - which source this came from, e.g. "cards", "offers_installment"
+title         : str  - short human-readable name (card name / merchant name / campaign name)
+search_text   : str  - a lowercase blob of text used for simple keyword matching in Phase 1
+display_text  : str  - a clean, readable version of the full record, used as LLM context
+metadata      : dict - the original structured fields, kept in case Phase 2 needs to
+                        filter/sort/rerank by specific fields (e.g. card segment, dates)
+
+INPUTS  : none (this is just a data class)
+OUTPUTS : the Record type, imported by every loader and retriever
+"""
+
+from dataclasses import dataclass, field
+
+
+@dataclass
+class Record:
+    id: str
+    source: str
+    title: str
+    search_text: str
+    display_text: str
+    metadata: dict = field(default_factory=dict)
+
+    def to_dict(self) -> dict:
+        """Convert to a plain dict, e.g. for caching to JSON or for logging."""
+        return {
+            "id": self.id,
+            "source": self.source,
+            "title": self.title,
+            "search_text": self.search_text,
+            "display_text": self.display_text,
+            "metadata": self.metadata,
+        }
+
+    @staticmethod
+    def from_dict(d: dict) -> "Record":
+        """Rebuild a Record from a plain dict, e.g. when loading a cache file."""
+        return Record(
+            id=d["id"],
+            source=d["source"],
+            title=d["title"],
+            search_text=d["search_text"],
+            display_text=d["display_text"],
+            metadata=d.get("metadata", {}),
+        )
+
+------------------------------------------------------------------------------------------------------

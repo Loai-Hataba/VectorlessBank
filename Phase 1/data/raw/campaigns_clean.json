@@ -1,0 +1,216 @@
+[
+  {
+    "id": "campaign_merchant_egypt_air_2026_07",
+    "record_type": "campaign",
+    "campaign_scope": "merchant",
+    "campaign_name": "Egypt Air July 2026 Installment Campaign",
+    "campaign_status": "active",
+    "campaign_start_date": null,
+    "campaign_end_date": "2026-07-31",
+    "priority_rank": 100,
+    "target_entity_type": "merchant",
+    "target_entity_value": "Egypt Air",
+    "merchant_name": "Egypt Air",
+    "offer_type": "campaign",
+    "campaign_category": "installment",
+    "channels": [
+      "website",
+      "application",
+      "call center"
+    ],
+    "eligible_card_segments": [
+      "all_bm_credit_cards"
+    ],
+    "excluded_card_segments": [
+      "corporate",
+      "asatha",
+      "al araby",
+      "kenana_online"
+    ],
+    "query_tags": [
+      "egypt air",
+      "egyptair",
+      "merchant campaign",
+      "installment",
+      "6 months",
+      "0% interest",
+      "0% admin fees",
+      "flight",
+      "travel"
+    ],
+    "details": {
+      "installment_months": [
+        6
+      ],
+      "interest_rate": "0%",
+      "admin_fees": "0%",
+      "minimum_transaction_amount_egp": 1000,
+      "channels": [
+        "website",
+        "application",
+        "call center"
+      ],
+      "merchant_type": "airline"
+    },
+    "source_language": "bilingual",
+    "source_file": "data/campaigns/june_campaigns.txt",
+    "source_text": "1- Kindly check the updated T&C’s as the campaign with Egypt Air will be launched today: \n\nEnglish version Arabic version\n1. Installments over 6 months 0% interest 0% admin fees. \n2. The minimum installment amount is 1000 EGP.\n3. Installments are available directly through )Website – Application – Call Center) for Egypt Air .\n4. The offer is valid for all BM credit cardholder except (Corporate, Asatha, Al Arabi) and the (Kenana) card for online installments.\n5. The offer is valid till 31st of July 2026. 1. تقسيط علي 6 شهور بدون فوائد او مصاريف إدارية. \n2. الحد الأدنى للتقسيط 1000 جم. \n3. التقسيط متاح مباشرة من خلال (الموقع الالكتروني - التطبيق - مركز اتصال) الخاص بمصر للطيران.\n4. العرض ساري لحاملي بطاقات بنك مصر الائتمانية ماعدا (الشركات، قسطها، العربي) و بطاقة (كنانة) في حالة التقسيط اونلاين. \n5. العرض ساري حتي 31 يوليو 2026 \n_______________________________________________"
+  },
+  {
+    "id": "campaign_merchant_el_araby_2026_07",
+    "record_type": "campaign",
+    "campaign_scope": "merchant",
+    "campaign_name": "EL Araby July 2026 Installment Campaign",
+    "campaign_status": "active",
+    "campaign_start_date": null,
+    "campaign_end_date": "2026-07-31",
+    "priority_rank": 110,
+    "target_entity_type": "merchant",
+    "target_entity_value": "ALAraby",
+    "merchant_name": "ALAraby",
+    "offer_type": "campaign",
+    "campaign_category": "installment",
+    "channels": [
+      "branches",
+      "official website",
+      "application",
+      "authorized distributors"
+    ],
+    "eligible_card_segments": [
+      "all_bm_credit_cards"
+    ],
+    "excluded_card_segments": [
+      "corporate",
+      "asatha",
+      "al araby",
+      "kenana_online"
+    ],
+    "query_tags": [
+      "el araby",
+      "alaraby",
+      "al araby",
+      "merchant campaign",
+      "installment",
+      "12 months",
+      "18 months",
+      "0% interest",
+      "0% admin fees",
+      "home appliances"
+    ],
+    "details": {
+      "installment_months": [
+        12,
+        18
+      ],
+      "interest_rate": "0%",
+      "admin_fees": "0%",
+      "selected_products_only": true,
+      "minimum_transaction_amounts_egp": {
+        "12_months": 2000,
+        "18_months": 2500
+      },
+      "distributor_installment_months": [
+        18
+      ],
+      "authorized_distributors": [
+        "Ehab Center",
+        "B. Tech",
+        "Hyper Techno",
+        "Aswak Abd El Aziz",
+        "Cairo Sales",
+        "Shawa Mall",
+        "2B",
+        "Raya",
+        "Gomla Market",
+        "Aswak Fathalla",
+        "Amazon"
+      ]
+    },
+    "source_language": "bilingual",
+    "source_file": "data/campaigns/june_campaigns.txt",
+    "source_text": "2- Kindly be noted that we will extend the below campaign during July 2026 with the below updated T&C’s: \n\nMerchant Name T&C’s English version T&C’s Arabic Version\n \n \n \n \n \nEL Araby 1. Campaign duration till 31st of July 2026.\n2. The installment offer valid on Selected products only.\n3. Installment up to 18 months 0% Interest 0% admin fees at EL Araby branches, official website & application.\n4. Installment over18 months only through official distributors of EL Araby. (EL Araby products only). (attached list of official distributors of EL Araby)\n5. Installment valid for all BM credit cardholder except (Corporate, Astha, Arabi) and )Kenana( card in Online installment. \n6. Minimum transaction is 2000 EGP/ 12 months . \n7. Minimum transaction is 2500 EGP/ 18 months . \n8. The authorized distributors for EL Araby are listed below:\n \n \nAuthorized distributors of EL Araby\nEhab Center\nB. Tech\nHyper Techno\nAswak Abd El Aziz\nCairo Sales \nShawa Mall\n2B\nRaya \nGomla Market\nAswak Fathalla \nAmazon \n 1. فترة الحملة حتي 31 يوليو 2026\n2. التقسيط على منتجات محددة فقط \n3. يتم التقسيط حتي 18 شهر بدون فوائد و بدون مصاريف إدارية مع العربي من خلال الفروع و الموقع الرسمي و التطبيق للتاجر.\n4. يتم التقسيط علي 18 شهر فقط بدون فوائد و بدون مصاريف إدارية من الموزعين المعتمدين للعربي (منتجات العربي فقط). ( موضح ادناه قائمة بالموزعين المعتمدين )\n5. العرض ساري لحاملي بطاقات بنك مصر الائتمانية ماعدا ( الشركات، قسطها، العربي) و بطاقة )كنانة( في حالة التقسيط اونلاين \n6. الحد الأدنى للتقسيط علي 12 شهر 2000 جنيه مصري\n7. الحد الأدنى للتقسيط علي 18 شهر 2500 جنيه مصري\n8. موضح ادناه قائمة الموزعين المعتمدين للعربي: \n \nقائمة الموزعين المعتمدين للعربي \nEhab Center\nB. Tech\nHyper Techno\nAswak Abd El Aziz\nCairo Sales \nShawa Mall\n2B\nRaya \nGomla Market\nAswak Fathalla \nAmazon\n\n_________________________________"
+  },
+  {
+    "id": "campaign_card_cashback_2026_07",
+    "record_type": "campaign",
+    "campaign_scope": "card",
+    "campaign_name": "Online Spend Cashback Campaign July 2026",
+    "campaign_status": "active",
+    "campaign_start_date": "2026-07-09",
+    "campaign_end_date": "2026-07-16",
+    "priority_rank": 120,
+    "target_entity_type": "card_family",
+    "target_entity_value": "BM Credit Cards",
+    "offer_type": "campaign",
+    "campaign_category": "cashback",
+    "channels": [
+      "online platforms"
+    ],
+    "eligible_card_segments": [
+      "gold",
+      "titanium",
+      "platinum",
+      "signature",
+      "world",
+      "infinite",
+      "world elite"
+    ],
+    "excluded_card_segments": [
+      "classic",
+      "al araby",
+      "qestaha",
+      "corporate"
+    ],
+    "query_tags": [
+      "cashback",
+      "online campaign",
+      "ecommerce",
+      "credit cards",
+      "gold",
+      "titanium",
+      "platinum",
+      "signature",
+      "world",
+      "infinite",
+      "world elite"
+    ],
+    "details": {
+      "mechanic": "Top card spenders during the campaign period can win cashback prizes.",
+      "channel_restriction": "online only",
+      "reward_currency": "EGP",
+      "cashback_by_card_tier": [
+        {
+          "card_tier": "gold",
+          "cashback_amount_egp": 5000
+        },
+        {
+          "card_tier": "titanium",
+          "cashback_amount_egp": 10000
+        },
+        {
+          "card_tier": "platinum",
+          "cashback_amount_egp": 20000
+        },
+        {
+          "card_tier": "signature",
+          "cashback_amount_egp": 30000
+        },
+        {
+          "card_tier": "world",
+          "cashback_amount_egp": 30000
+        },
+        {
+          "card_tier": "infinite",
+          "cashback_amount_egp": 50000
+        },
+        {
+          "card_tier": "world elite",
+          "cashback_amount_egp": 50000
+        }
+      ]
+    },
+    "source_language": "arabic",
+    "source_file": "data/campaigns/june_campaigns.txt",
+    "source_text": "3- cashback offer details for your reference.\n\nاستخدم بطاقات بنك مصر الائتمانية في مشترياتك الإلكترونية خلال فترة الحملة، وكن من أكثر العملاء استخدامًا للبطاقة لتحصل على فرصة الفوز بكاش باك يصل الي 50 الف جنية مصري.\nتفاصيل العرض:\n• العرض ساري من 9 يوليو 2026 حتي 16 يوليو 2026\n• العرض متاح لحاملي بطاقات بنك مصر الائتمانية.\n• تسري الحملة على معاملات الشراء من خلال المنصات الإلكترونية فقط.\n• العرض لا يشمل بطاقات : (كلاسيك – العربي – قسطها – الشركات). \n• سيتم اختيار أكثر عملاء استخداماٌ للبطاقة من حيث حجم الاستخدامات للفوز مقسمين حسب نوع البطاقة كما هو موضح في الجدول ادناه: \n\nكاش باك نوع البطاقة\n5,000 الجولد\n10,000 التيتانيوم\n20,000 البلاتينية\n30,000 سيجنتشر\n30,000 وورلد\n50,000 انفنيت\n50,000 وورلد ايليت"
+  }
+]

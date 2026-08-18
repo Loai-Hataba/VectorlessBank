@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BM Retail Banking Assistant</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <div class="brand">
+        <span class="brand-mark">BM</span>
+        <div class="brand-text">
+          <h1>Retail Banking Assistant</h1>
+          <p>Cards &middot; Offers &middot; Campaigns &mdash; answered from live catalog data</p>
+        </div>
+      </div>
+      <span class="badge" id="engine-badge">local model</span>
+    </header>
+
+    <main class="chat-window" id="chat-window">
+      <div class="message assistant">
+        <div class="bubble">
+          Hi, I can answer questions about Banque Misr credit cards, merchant
+          installment/discount offers, and current campaigns. Ask me something
+          like <em>"What installment offer does B.Tech have?"</em>
+        </div>
+      </div>
+    </main>
+
+    <form class="composer" id="composer">
+      <input
+        type="text"
+        id="message-input"
+        placeholder="Ask about a card, merchant offer, or campaign..."
+        autocomplete="off"
+      />
+      <button type="submit" id="send-button">Send</button>
+    </form>
+  </div>
+
+  <script src="{{ url_for('static', filename='chat.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,88 @@
+"""
+pipeline/rag_pipeline.py
+
+WHAT THIS FILE DOES
+--------------------
+This is the "conductor" that runs one full question-answering turn:
+
+    user question
+        -> ask EVERY retriever for its best matches (cards, offers, campaigns)
+        -> merge the results into one context block
+        -> build the final prompt
+        -> call the LLM
+        -> return the answer (plus the retrieved records, for transparency)
+
+WHY PHASE 1's FLOW IS "DUMB" ON PURPOSE
+-------------------------------------------
+Notice this pipeline does NOT decide which source is relevant --
+it queries ALL of them, every time, and lets the keyword scores
+naturally return nothing (empty list) from sources that don't match.
+That's intentional: Phase 1's goal is a working, understandable
+baseline. Phase 2 replaces "ask everyone" with an `agent/router.py`
+step that uses the LLM to decide which source(s) to query -- but
+that step will simply choose WHICH of these same retrievers to call.
+Nothing here needs to be rewritten for that upgrade, only the
+decision of which retrievers to invoke.
+
+WHY WE RETURN retrieved_records TOO, NOT JUST THE ANSWER
+------------------------------------------------------------
+Returning what was actually retrieved (not just the final text) is
+essential for you to debug/understand the system, and it's exactly
+what Phase 2's pipeline_logger.py will start writing to a log file
+automatically.
+
+INPUTS  : question (str) -- the user's message
+OUTPUTS : a dict: {
+            "answer": str,
+            "retrieved_records": list[Record],
+            "context_text": str,
+          }
+"""
+
+from retrievers.cards_retriever import CardsRetriever
+from retrievers.offers_retriever import OffersRetriever
+from retrievers.campaigns_retriever import CampaignsRetriever
+from pipeline.context_builder import build_context
+from pipeline.prompt_templates import SYSTEM_PROMPT, build_user_prompt
+from llm.llm_client import LLMClient
+from config.settings import MAX_RESULTS_PER_SOURCE
+
+
+class RagPipeline:
+    def __init__(self):
+        # Each retriever loads its own data once here. If you add a new
+        # source later, add one line here and one line in `_retrieve_all`
+        # -- nothing else in this class changes.
+        self.cards_retriever = CardsRetriever()
+        self.offers_retriever = OffersRetriever()
+        self.campaigns_retriever = CampaignsRetriever()
+        self.llm_client = LLMClient()
+
+    def answer(self, question: str) -> dict:
+        retrieved_records = self._retrieve_all(question)
+        context_text = build_context(retrieved_records)
+        user_prompt = build_user_prompt(question, context_text)
+
+        answer_text = self.llm_client.generate(
+            system_prompt=SYSTEM_PROMPT,
+            user_prompt=user_prompt,
+        )
+
+        return {
+            "answer": answer_text,
+            "retrieved_records": retrieved_records,
+            "context_text": context_text,
+        }
+
+    def _retrieve_all(self, question: str) -> list:
+        """
+        Query every retriever with the raw question and merge the results.
+        Each retriever independently returns [] if nothing matched, so
+        merging is just concatenation -- no source is ever forced into
+        the context if it found nothing relevant.
+        """
+        records = []
+        records.extend(self.cards_retriever.retrieve(question, MAX_RESULTS_PER_SOURCE))
+        records.extend(self.offers_retriever.retrieve(question, MAX_RESULTS_PER_SOURCE))
+        records.extend(self.campaigns_retriever.retrieve(question, MAX_RESULTS_PER_SOURCE))
+        return records

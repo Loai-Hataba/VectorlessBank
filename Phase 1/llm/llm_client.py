@@ -1,0 +1,91 @@
+"""
+llm/llm_client.py
+
+WHAT THIS FILE DOES
+--------------------
+A thin wrapper around Ollama's local HTTP API. Every other module in
+this project calls `LLMClient().generate(...)` and never talks to
+Ollama's HTTP endpoint directly.
+
+WHY IT EXISTS
+-------------
+If we scattered `requests.post("http://localhost:11434/...")` calls
+across the pipeline, agent, and evaluation code, switching to a
+different model runtime later (e.g. a hosted API, or vLLM) would mean
+hunting through every file. Instead, EVERY OTHER MODULE only depends
+on this class's `generate(system_prompt, user_prompt)` method. Swap
+what happens *inside* generate() and nothing else in the project needs
+to change.
+
+HOW OLLAMA WORKS (briefly)
+----------------------------
+Ollama runs a local server (started with `ollama serve`, or
+automatically when you run `ollama run <model>`) that exposes a
+simple JSON HTTP API at http://localhost:11434. We use the
+`/api/chat` endpoint, which accepts a list of {role, content}
+messages -- same shape as OpenAI/Anthropic chat APIs -- and returns
+the model's reply.
+
+INPUTS  : system_prompt (str), user_prompt (str)
+OUTPUTS : the model's reply as a plain string
+
+REQUIRES: Ollama installed and running locally (`ollama serve`),
+          with the model in config.settings.OLLAMA_MODEL already
+          pulled (`ollama pull llama3.1:8b`, or whichever you set).
+"""
+
+import requests
+
+from config.settings import (
+    OLLAMA_BASE_URL,
+    OLLAMA_MODEL,
+    OLLAMA_TIMEOUT_SECONDS,
+    LLM_TEMPERATURE,
+)
+
+
+class LLMClient:
+    def __init__(self, model: str = None):
+        # Allow overriding the model per-instance (useful later if, say,
+        # the CRAG-judge step in Phase 2 wants a different/smaller model
+        # than the final answer-writing step).
+        self.model = model or OLLAMA_MODEL
+
+    def generate(self, system_prompt: str, user_prompt: str) -> str:
+        """
+        Send a system+user prompt pair to the local Ollama model and
+        return its text reply. Raises a clear RuntimeError if Ollama
+        isn't reachable, instead of a confusing low-level exception.
+        """
+        url = f"{OLLAMA_BASE_URL}/api/chat"
+        payload = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            "stream": False,
+            "options": {
+                "temperature": LLM_TEMPERATURE,
+            },
+        }
+
+        try:
+            response = requests.post(url, json=payload, timeout=OLLAMA_TIMEOUT_SECONDS)
+            response.raise_for_status()
+        except requests.exceptions.ConnectionError as e:
+            raise RuntimeError(
+                f"Could not reach Ollama at {OLLAMA_BASE_URL}. "
+                f"Is Ollama running? Try `ollama serve` in a terminal, "
+                f"and make sure you've pulled the model with "
+                f"`ollama pull {self.model}`."
+            ) from e
+        except requests.exceptions.HTTPError as e:
+            raise RuntimeError(
+                f"Ollama returned an error for model '{self.model}'. "
+                f"Have you run `ollama pull {self.model}`? Details: {e}"
+            ) from e
+
+        data = response.json()
+        # /api/chat with stream=False returns {"message": {"role": ..., "content": ...}, ...}
+        return data["message"]["content"]

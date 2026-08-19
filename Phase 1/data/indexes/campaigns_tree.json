@@ -1,0 +1,37 @@
+{
+  "version": "1.0",
+  "source": "campaigns",
+  "metadata": {
+    "builder": "llm",
+    "model": "hf.co/bartowski/Llama-3.2-1B-Instruct-GGUF:latest",
+    "role": "indexer"
+  },
+  "root": {
+    "node_id": "node_0001",
+    "title": "Cashback Campaigns",
+    "summary": "Cashback campaigns for online spend",
+    "record_ids": [],
+    "children": [
+      {
+        "node_id": "node_0002",
+        "title": "Travel",
+        "summary": "Travel-related cashback campaigns",
+        "record_ids": [
+          "campaign_card_cashback_2026_07",
+          "campaign_merchant_el_araby_2026_07"
+        ],
+        "children": []
+      },
+      {
+        "node_id": "node_0003",
+        "title": "Merchant",
+        "summary": "Merchant-specific cashback campaigns",
+        "record_ids": [
+          "campaign_card_cashback_2026_07",
+          "campaign_merchant_egypt_air_2026_07"
+        ],
+        "children": []
+      }
+    ]
+  }
+}

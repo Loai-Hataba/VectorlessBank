@@ -39,9 +39,7 @@ OUTPUTS : a dict: {
           }
 """
 
-from retrievers.cards_retriever import CardsRetriever
-from retrievers.offers_retriever import OffersRetriever
-from retrievers.campaigns_retriever import CampaignsRetriever
+from retrievers.tree_retriever import TreeRetriever
 from pipeline.context_builder import build_context
 from pipeline.prompt_templates import SYSTEM_PROMPT, build_user_prompt
 from llm.llm_client import LLMClient
@@ -50,12 +48,21 @@ from config.settings import MAX_RESULTS_PER_SOURCE
 
 class RagPipeline:
     def __init__(self):
-        # Each retriever loads its own data once here. If you add a new
-        # source later, add one line here and one line in `_retrieve_all`
-        # -- nothing else in this class changes.
-        self.cards_retriever = CardsRetriever()
-        self.offers_retriever = OffersRetriever()
-        self.campaigns_retriever = CampaignsRetriever()
+        self.retrievers = {}
+        self.retrievers = {
+            "cards": TreeRetriever(
+                source="cards",
+                records=self.cards_records,
+            ),
+            "offers": TreeRetriever(
+                source="offers",
+                records=self.offers_records,
+            ),
+            "campaigns": TreeRetriever(
+                source="campaigns",
+                records=self.campaigns_records,
+            ),
+        }
         self.llm_client = LLMClient()
 
     def answer(self, question: str) -> dict:
@@ -74,15 +81,23 @@ class RagPipeline:
             "context_text": context_text,
         }
 
-    def _retrieve_all(self, question: str) -> list:
-        """
-        Query every retriever with the raw question and merge the results.
-        Each retriever independently returns [] if nothing matched, so
-        merging is just concatenation -- no source is ever forced into
-        the context if it found nothing relevant.
-        """
-        records = []
-        records.extend(self.cards_retriever.retrieve(question, MAX_RESULTS_PER_SOURCE))
-        records.extend(self.offers_retriever.retrieve(question, MAX_RESULTS_PER_SOURCE))
-        records.extend(self.campaigns_retriever.retrieve(question, MAX_RESULTS_PER_SOURCE))
-        return records
+    def _retrieve_all(self, question: str):
+
+        all_records = []
+        seen_ids = set()
+
+        for source, retriever in self.retrievers.items():
+
+            records = retriever.retrieve(
+                question,
+                top_k=5,
+            )
+
+            for record in records:
+
+                if record.id not in seen_ids:
+
+                    seen_ids.add(record.id)
+                    all_records.append(record)
+
+        return all_records

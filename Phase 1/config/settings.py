@@ -56,10 +56,49 @@ OLLAMA_INDEXER_TEMPERATURE = 0.0
 OLLAMA_TRAVERSER_TEMPERATURE = 0.0
 OLLAMA_GENERATOR_TEMPERATURE = 0.2
 
-# ------------------------------------------------------------
-# Request timeout
-# ------------------------------------------------------------
-OLLAMA_TIMEOUT_SECONDS = 120
+# ---------------------------------------------------------------------------
+# LLM request timeout
+# ---------------------------------------------------------------------------
+
+OLLAMA_TIMEOUT_SECONDS = int(
+    os.environ.get(
+        "OLLAMA_TIMEOUT_SECONDS",
+        "300",
+    )
+)
+
+# ---------------------------------------------------------------------------
+# LLM tree indexing
+# ---------------------------------------------------------------------------
+
+# Maximum number of records sent to the indexer in one LLM request.
+#
+# This is deliberately small because the local 1B model must understand
+# the records, organize them, and generate structured JSON.
+TREE_INDEX_BATCH_SIZE = int(
+    os.environ.get(
+        "TREE_INDEX_BATCH_SIZE",
+        "10",
+    )
+)
+
+# Number of times the indexer may retry after invalid output.
+TREE_INDEX_MAX_RETRIES = int(
+    os.environ.get(
+        "TREE_INDEX_MAX_RETRIES",
+        "0",
+    )
+)
+
+# Maximum number of records a leaf node should directly reference.
+#
+# This prevents a generic category node from becoming a giant bucket.
+TREE_INDEX_MAX_RECORDS_PER_LEAF = int(
+    os.environ.get(
+        "TREE_INDEX_MAX_RECORDS_PER_LEAF",
+        "5",
+    )
+)
 
 # ---------------------------------------------------------------------------
 # Retrieval settings (Phase 1: simple keyword retrieval)

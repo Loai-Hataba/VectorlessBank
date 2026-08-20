@@ -2,35 +2,53 @@
   "version": "1.0",
   "source": "campaigns",
   "metadata": {
-    "builder": "llm",
-    "model": "hf.co/bartowski/Llama-3.2-1B-Instruct-GGUF:latest",
-    "role": "indexer"
+    "builder": "pageindex",
+    "doc_name": "campaigns",
+    "line_count": 54,
+    "markdown_path": "C:\\Users\\Omart\\Documents\\GitHub\\VectorlessBank\\Phase 1\\data\\markdown\\campaigns.md",
+    "node_summaries": "yes",
+    "summary_model": "ollama/llama3.1:8b"
   },
   "root": {
-    "node_id": "node_0001",
-    "title": "Cashback Campaigns",
-    "summary": "Cashback campaigns for online spend",
+    "node_id": "node_0000",
+    "title": "Campaigns",
+    "summary": "# Campaigns",
     "record_ids": [],
     "children": [
       {
-        "node_id": "node_0002",
-        "title": "Travel",
-        "summary": "Travel-related cashback campaigns",
-        "record_ids": [
-          "campaign_card_cashback_2026_07",
-          "campaign_merchant_el_araby_2026_07"
-        ],
-        "children": []
-      },
-      {
-        "node_id": "node_0003",
-        "title": "Merchant",
-        "summary": "Merchant-specific cashback campaigns",
-        "record_ids": [
-          "campaign_card_cashback_2026_07",
-          "campaign_merchant_egypt_air_2026_07"
-        ],
-        "children": []
+        "node_id": "node_0001",
+        "title": "Travel And Airlines",
+        "summary": "## Travel And Airlines",
+        "record_ids": [],
+        "children": [
+          {
+            "node_id": "node_0002",
+            "title": "Egypt Air July 2026 Installment Campaign",
+            "summary": "### Egypt Air July 2026 Installment Campaign [campaign_merchant_egypt_air_2026_07]  Campaign: Egypt Air July 2026 Installment Campaign Status: active Applies to: merchant = Egypt Air Valid: no start date listed to 2026-07-31 Eligible card segments: all_bm_credit_cards Excluded card segments: corporate, asatha, al araby, kenana_online Channels: website, application, call center Details:   - install...",
+            "record_ids": [
+              "campaign_merchant_egypt_air_2026_07"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0003",
+            "title": "EL Araby July 2026 Installment Campaign",
+            "summary": "The EL Araby July 2026 Installment Campaign is an active campaign that applies to merchant ALAraby. It offers eligible card segments all_bm_credit_cards with 0% interest rate and no admin fees. The campaign allows for installments of either 12 or 18 months, with minimum transaction amounts of EGP 2000 for 12 months and EGP 2500 for 18 months.",
+            "record_ids": [
+              "campaign_merchant_el_araby_2026_07"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0004",
+            "title": "Online Spend Cashback Campaign July 2026",
+            "summary": "The Online Spend Cashback Campaign July 2026 is an active campaign that offers cashback prizes to top card spenders during the campaign period. It applies to BM Credit Cards of specific segments (gold, titanium, platinum, signature, world, and infinite) and excludes classic, al araby, qestaha, and corporate cards. The campaign rewards participants with cashback in EGP currency, with varying amount...",
+            "record_ids": [
+              "campaign_card_cashback_2026_07"
+            ],
+            "children": []
+          }
+        ]
       }
     ]
   }

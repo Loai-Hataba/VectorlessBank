@@ -11,8 +11,8 @@ Examples:
 import sys
 
 from indexing.tree_storage import TreeStorage
-from indexing.batched_tree_builder import (
-    BatchedTreeBuilder,
+from indexing.pageindex_tree_builder import (
+    PageIndexTreeBuilder,
 )
 
 from loaders.campaigns_loader import CampaignsLoader
@@ -71,9 +71,9 @@ def main():
     )
 
     print()
-    print("Building tree with local LLM...")
+    print("Building tree with PageIndex...")
 
-    builder = BatchedTreeBuilder()
+    builder = PageIndexTreeBuilder()
 
     tree = builder.build(
         source=source,

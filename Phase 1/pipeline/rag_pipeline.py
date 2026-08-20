@@ -43,12 +43,21 @@ from retrievers.tree_retriever import TreeRetriever
 from pipeline.context_builder import build_context
 from pipeline.prompt_templates import SYSTEM_PROMPT, build_user_prompt
 from llm.llm_client import LLMClient
+from loaders.cards_loader import CardsLoader
+from loaders.offers_loader import OffersLoader
+from loaders.campaigns_loader import CampaignsLoader
 from config.settings import MAX_RESULTS_PER_SOURCE
 
 
 class RagPipeline:
     def __init__(self):
-        self.retrievers = {}
+        # The tree index only stores record IDs, so the actual Records
+        # still have to be loaded here for the retrievers to resolve
+        # those IDs back into answerable content.
+        self.cards_records = CardsLoader().load()
+        self.offers_records = OffersLoader().load()
+        self.campaigns_records = CampaignsLoader().load()
+
         self.retrievers = {
             "cards": TreeRetriever(
                 source="cards",
@@ -90,7 +99,7 @@ class RagPipeline:
 
             records = retriever.retrieve(
                 question,
-                top_k=5,
+                top_k=MAX_RESULTS_PER_SOURCE,
             )
 
             for record in records:

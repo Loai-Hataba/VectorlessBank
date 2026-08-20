@@ -33,6 +33,10 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 RAW_DATA_DIR = PROJECT_ROOT / "data" / "raw"
 PROCESSED_DATA_DIR = PROJECT_ROOT / "data" / "processed"
 
+# Markdown rendered from Records, fed to PageIndex. Also handy to open
+# by hand when a generated tree looks wrong.
+MARKDOWN_DIR = PROJECT_ROOT / "data" / "markdown"
+
 CARDS_XLSX_PATH = RAW_DATA_DIR / "20260306_Product_Catalog_new_version.xlsx"
 OFFERS_XLSX_PATH = RAW_DATA_DIR / "Feb_2026_offers_-_Wave_1_-_Call_Center.xlsx"
 CAMPAIGNS_JSON_PATH = RAW_DATA_DIR / "campaigns_clean.json"
@@ -45,9 +49,9 @@ OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
 # ------------------------------------------------------------
 # Models
 # ------------------------------------------------------------
-OLLAMA_INDEXER_MODEL = "hf.co/bartowski/Llama-3.2-1B-Instruct-GGUF:latest"
-OLLAMA_TRAVERSER_MODEL = "hf.co/bartowski/Llama-3.2-1B-Instruct-GGUF:latest"
-OLLAMA_GENERATOR_MODEL = "hf.co/bartowski/Llama-3.2-1B-Instruct-GGUF:latest"
+OLLAMA_INDEXER_MODEL   = "llama3.1:8b"
+OLLAMA_TRAVERSER_MODEL = "llama3.1:8b"
+OLLAMA_GENERATOR_MODEL = "llama3.1:8b"
 
 # ------------------------------------------------------------
 # Temperature
@@ -97,6 +101,46 @@ TREE_INDEX_MAX_RECORDS_PER_LEAF = int(
     os.environ.get(
         "TREE_INDEX_MAX_RECORDS_PER_LEAF",
         "5",
+    )
+)
+
+# ---------------------------------------------------------------------------
+# PageIndex tree indexing
+# ---------------------------------------------------------------------------
+# The settings above (batch size, retries, records per leaf) belong to the
+# older hand-rolled TreeBuilder/BatchedTreeBuilder. PageIndex processes the
+# whole document at once, so it uses these instead.
+
+# Whether PageIndex should write an LLM-generated summary onto each node.
+# "no" makes indexing fully deterministic and requires no LLM at all;
+# "yes" gives the traversal LLM more to go on, at one call per node.
+PAGEINDEX_ADD_NODE_SUMMARY = os.environ.get(
+    "PAGEINDEX_ADD_NODE_SUMMARY",
+    "yes",
+)
+
+# PageIndex talks to models through LiteLLM, whose naming is
+# "provider/model" -- so the local Ollama model needs an "ollama/" prefix.
+PAGEINDEX_SUMMARY_MODEL = os.environ.get(
+    "PAGEINDEX_SUMMARY_MODEL",
+    f"ollama/{OLLAMA_INDEXER_MODEL}",
+)
+
+# Nodes shorter than this many tokens are not sent to the LLM at all --
+# PageIndex uses their own text as the summary.
+PAGEINDEX_SUMMARY_TOKEN_THRESHOLD = int(
+    os.environ.get(
+        "PAGEINDEX_SUMMARY_TOKEN_THRESHOLD",
+        "200",
+    )
+)
+
+# Every node summary is shown to the traversal LLM, so an un-truncated
+# summary of a 366-column card record would blow up the traversal prompt.
+PAGEINDEX_MAX_SUMMARY_CHARS = int(
+    os.environ.get(
+        "PAGEINDEX_MAX_SUMMARY_CHARS",
+        "400",
     )
 )
 

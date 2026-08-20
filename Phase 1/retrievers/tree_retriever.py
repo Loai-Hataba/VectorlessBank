@@ -178,7 +178,11 @@ Return ONLY:
 
         for node in selected_nodes:
 
-            for record_id in node.record_ids:
+            # A selected node stands for everything beneath it, not just
+            # the records pinned to it directly. Category nodes carry no
+            # record_ids of their own, so selecting "Installment" would
+            # otherwise retrieve nothing at all.
+            for record_id in self._collect_record_ids(node):
 
                 if record_id not in record_ids:
                     record_ids.append(record_id)
@@ -292,6 +296,29 @@ Return ONLY:
 
         return valid_ids
 
+    @staticmethod
+    def _collect_record_ids(node) -> list[str]:
+        """
+        Every record ID in this node's subtree, parents before children,
+        so broader context leads and detail follows.
+        """
+
+        record_ids = []
+
+        def visit(current):
+
+            for record_id in current.record_ids:
+
+                if record_id not in record_ids:
+                    record_ids.append(record_id)
+
+            for child in current.children:
+                visit(child)
+
+        visit(node)
+
+        return record_ids
+
     def _remove_redundant_ancestors(self, selected_nodes: list,) -> list:
         """
         Remove selected parent nodes when a selected descendant exists.
@@ -305,28 +332,39 @@ Return ONLY:
             for node in selected_nodes
         }
 
-        descendant_ids = set()
+        # A selected node makes an ancestor redundant only when that
+        # ancestor was ALSO selected. Walking down while carrying the
+        # selected ancestors seen so far is what distinguishes "this
+        # node has a selected parent" from "this node has any parent".
+        redundant_ids = set()
 
-        def collect_descendants(node):
+        def visit(node, selected_ancestors: frozenset):
+
+            if node.node_id in selected_ids and selected_ancestors:
+
+                redundant_ids.update(
+                    selected_ancestors
+                )
+
+            if node.node_id in selected_ids:
+
+                selected_ancestors = (
+                    selected_ancestors
+                    | {node.node_id}
+                )
 
             for child in node.children:
+                visit(child, selected_ancestors)
 
-                if child.node_id in selected_ids:
-
-                    descendant_ids.add(
-                        child.node_id
-                    )
-
-                collect_descendants(child)
-
-        collect_descendants(
-            self.tree.root
+        visit(
+            self.tree.root,
+            frozenset(),
         )
 
         return [
             node
             for node in selected_nodes
-            if node.node_id not in descendant_ids
+            if node.node_id not in redundant_ids
         ]
 
     def _index_tree_nodes(self, node):

@@ -1,0 +1,1737 @@
+{
+  "version": "1.0",
+  "source": "offers",
+  "metadata": {
+    "builder": "pageindex",
+    "doc_name": "offers",
+    "line_count": 2451,
+    "markdown_path": "C:\\Users\\Omart\\Documents\\GitHub\\VectorlessBank\\Phase 1\\data\\markdown\\offers.md",
+    "node_summaries": "yes",
+    "summary_model": "ollama/llama3.1:8b"
+  },
+  "root": {
+    "node_id": "node_0000",
+    "title": "Merchant Offers",
+    "summary": "# Merchant Offers",
+    "record_ids": [],
+    "children": [
+      {
+        "node_id": "node_0001",
+        "title": "Installment Offers",
+        "summary": "## Installment Offers",
+        "record_ids": [],
+        "children": [
+          {
+            "node_id": "node_0002",
+            "title": "Mahgoub - Installment Offer",
+            "summary": "### Mahgoub - Installment Offer [offer_installment_2_Mahgoub]  Merchant: Mahgoub Offer type: Installment Category: Home Terms (English): 6 months -   0% Admin Fees  Min. transaction amount EGP 500 Installment through branches Installment duration (as listed, Arabic): تقسيط 6 شهر",
+            "record_ids": [
+              "offer_installment_2_Mahgoub"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0003",
+            "title": "Vevian - Installment Offer",
+            "summary": "### Vevian - Installment Offer [offer_installment_3_Vevian]  Merchant: Vevian Offer type: Installment Category: Home Appliances Terms (English): 6 months -   9% Admin Fees  9 months -   11.25% Admin Fees 12 months -   0% Admin Fees  18 months -   18.25% Admin Fees  24 months -   26% Admin Fees  Min transaction amount 500 EGP   Installment through branches Installment duration (as listed, Arabic):...",
+            "record_ids": [
+              "offer_installment_3_Vevian"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0004",
+            "title": "Carrefour - Installment Offer",
+            "summary": "### Carrefour - Installment Offer [offer_installment_4_Carrefour]  Merchant: Carrefour Offer type: Installment Category: Electronics & supermarket Terms (English): 3 months -    0 % Admin Fees (valid till 21th of Feb) 6  months -   0 % Admin Fees (valid till 21th of Feb) 9 months -    11 % Admin Fees 12 months -    13 % Admin Fees 18 months -    18 % Admin Fees 24 months -    22 % Admin Fees 36 mo...",
+            "record_ids": [
+              "offer_installment_4_Carrefour"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0005",
+            "title": "Miami center - Installment Offer",
+            "summary": "### Miami center - Installment Offer [offer_installment_5_Miami center]  Merchant: Miami center Offer type: Installment Category: Mobile Terms (English): 6 months -    0 % Admin Fees 9 months -    2 % Admin Fees 12 months -    4 % Admin Fees 18 months -   9 % Admin Fees 24 months -   13% Admin Fees 36 months -    21 % Admin Fees 48 months -    27 % Admin Fees 60 months -    33 % Admin Fees Min Trx...",
+            "record_ids": [
+              "offer_installment_5_Miami center"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0006",
+            "title": "Orange - Installment Offer",
+            "summary": "### Orange - Installment Offer [offer_installment_6_Orange]  Merchant: Orange Offer type: Installment Category: Electronics Terms (English): 6 months -    0 % Admin Fees 12 months -  0 % Admin Fees 18 moths -    0 % Admin Fees 24 months -  0 % Admin Fees 36 months -  29 Admin Fees   Min. transaction amount 500 EGP Installment through branches Installment duration (as listed, Arabic): تقسيط 36 شهر",
+            "record_ids": [
+              "offer_installment_6_Orange"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0007",
+            "title": "Aswak Abd EL Aziz ST - Installment Offer",
+            "summary": "### Aswak Abd EL Aziz ST - Installment Offer [offer_installment_7_Aswak Abd EL Aziz ST]  Merchant: Aswak Abd EL Aziz ST Offer type: Installment Category: Home Appliances Terms (English): 3 months -    3 % Admin Fees  6 months -    6 % Admin Fees 9 months -    9 % Admin Fees 12 months -    11 % Admin Fees 18 months -    15 % Admin Fees 24 months -    19 % Admin Fees 36 months -    26 % Admin Fees M...",
+            "record_ids": [
+              "offer_installment_7_Aswak Abd EL Aziz ST"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0008",
+            "title": "B.TECH - Installment Offer",
+            "summary": "### B.TECH - Installment Offer [offer_installment_8_B.TECH]  Merchant: B.TECH Offer type: Installment Category: Electronics Terms (English): 3 months -  0 % Admin Fees 6 months -  0 % Admin Fees 9 months -  0 % Admin Fees 12 months -  0 % Admin Fees 18 months -  21.5 % Admin Fees 24 months -  26.5 % Admin Fees 36 months -  36 % Admin Fees The offer valid till 10th of Feb)  Min Trx amount EGP 500...",
+            "record_ids": [
+              "offer_installment_8_B.TECH"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0009",
+            "title": "Tradeline - Installment Offer",
+            "summary": "### Tradeline - Installment Offer [offer_installment_9_Tradeline]  Merchant: Tradeline Offer type: Installment Category: Mobile Terms (English): 3 months -   5 % Admin Fees  6 months -   7.5 % Admin Fees  9 months -    10% Admin Fees  12 months -    12.50 % Admin Fees  18 months -    17 % Admin Fees  24 months -   21 % Admin Fees  36 months -   28 % Admin Fees  48 months -   34 % Admin Fees  60 mo...",
+            "record_ids": [
+              "offer_installment_9_Tradeline"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0010",
+            "title": "LG - Installment Offer",
+            "summary": "### LG - Installment Offer [offer_installment_10_LG]  Merchant: LG Offer type: Installment Category:  Terms (English): 6 months -    0 % Admin Fees  12 months -    0 % Admin Fees Min transaction amount 500 EGP   Installment through LG website Installment duration (as listed, Arabic): تقسيط 12 شهر",
+            "record_ids": [
+              "offer_installment_10_LG"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0011",
+            "title": "I Tunes - Installment Offer",
+            "summary": "### I Tunes - Installment Offer [offer_installment_11_I Tunes]  Merchant: I Tunes Offer type: Installment Category: Electronics Terms (English): 3 months -    0 % Admin Fees  6 months -    0 % Admin Fees  9 months -    0 % Admin Fees  12 months -  0 % Admin Fees  18 months -  0 % Admin Fees  24 months -   0 % Admin Fees  Min transaction amount 500 EGP   Installment through branches Installment dur...",
+            "record_ids": [
+              "offer_installment_11_I Tunes"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0012",
+            "title": "ABA Market - Installment Offer",
+            "summary": "### ABA Market - Installment Offer [offer_installment_12_ABA Market]  Merchant: ABA Market Offer type: Installment Category: Market Terms (English): 3 months -   5% Admin Fees 6 months -   7.50% Admin Fees  Min. transaction amount EGP 500 Installment through branches Installment duration (as listed, Arabic): تقسيط 6 شهر",
+            "record_ids": [
+              "offer_installment_12_ABA Market"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0013",
+            "title": "Goldady - Installment Offer",
+            "summary": "### Goldady - Installment Offer [offer_installment_13_Goldady]  Merchant: Goldady Offer type: Installment Category: Jewellry Terms (English): 3 months -    6% Admin Fees   6 months -    8.50% Admin Fees  9 months -  11% Admin Fees  12 months -   13.50% Admin Fees  Min Trx amount EGP 500  Installment through branches Installment duration (as listed, Arabic): تقسيط 12 شهر",
+            "record_ids": [
+              "offer_installment_13_Goldady"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0014",
+            "title": "Fit & Fix - Installment Offer",
+            "summary": "### Fit & Fix - Installment Offer [offer_installment_14_Fit & Fix]  Merchant: Fit & Fix Offer type: Installment Category: Automotive Terms (English): 3 months -     0 % Admin Fees 6 months -     0 % Admin Fees   9 months -     1.25 % Admin Fees 12 months -   4 % Admin Fees Min. transaction amount 500 EGP Installment through branches Installment duration (as listed, Arabic): تقسيط 12 شهر",
+            "record_ids": [
+              "offer_installment_14_Fit & Fix"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0015",
+            "title": "Ghataty - Installment Offer",
+            "summary": "### Ghataty - Installment Offer [offer_installment_15_Ghataty]  Merchant: Ghataty Offer type: Installment Category: Automotive Terms (English): 3 months -    0% Admin Fees  6 months -    0% Admin Fees  9 months -    0% Admin Fees Min. transaction amount EGP 500   Installment through branches Installment duration (as listed, Arabic): تقسيط 9 شهور",
+            "record_ids": [
+              "offer_installment_15_Ghataty"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0016",
+            "title": "We care Clinic - Installment Offer",
+            "summary": "### We care Clinic - Installment Offer [offer_installment_16_We care Clinic]  Merchant: We care Clinic Offer type: Installment Category: Health and wellness Terms (English): 3 Months - 6% Admin Fees    6 Months - 9% Admin Fees  9 Months - 12% Admin Fees  12 Months - 15% Admin Fees   Installment through branches Min Trx amount 500 EGP Installment duration (as listed, Arabic): تقسيط 12 شهر",
+            "record_ids": [
+              "offer_installment_16_We care Clinic"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0017",
+            "title": "AL Nasser - Installment Offer",
+            "summary": "### AL Nasser - Installment Offer [offer_installment_17_AL Nasser]  Merchant: AL Nasser Offer type: Installment Category: Fashion Terms (English): 3 Months - 3% Admin Fees  6 Months - 6% Admin Fees  9 Months - 9% Admin Fees  12 Months - 12% Admin Fees   Installment through branches Min Trx amount 500 EGP Installment duration (as listed, Arabic): تقسيط 12 شهر",
+            "record_ids": [
+              "offer_installment_17_AL Nasser"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0018",
+            "title": "Arafa Group - Installment Offer",
+            "summary": "### Arafa Group - Installment Offer [offer_installment_18_Arafa Group]  Merchant: Arafa Group Offer type: Installment Category: Fashion Terms (English): 3Months - 1.5% Admin Fees  6 Months - 4% Admin Fees  9 Months - 7% Admin Fees  12 Months - 10% Admin Fees   Installment through branches Min Trx amount 500 EGP Installment duration (as listed, Arabic): تقسيط 12 شهر",
+            "record_ids": [
+              "offer_installment_18_Arafa Group"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0019",
+            "title": "Suit Shop - Installment Offer",
+            "summary": "### Suit Shop - Installment Offer [offer_installment_19_Suit Shop]  Merchant: Suit Shop Offer type: Installment Category: Fashion Terms (English): 3Months - 1.5% Admin Fees  6 Months - 4% Admin Fees  9 Months - 7% Admin Fees  12 Months - 10% Admin Fees   Installment through branches Min Trx amount 500 EGP Installment duration (as listed, Arabic): تقسيط 12 شهر",
+            "record_ids": [
+              "offer_installment_19_Suit Shop"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0020",
+            "title": "Mario Barutti - Installment Offer",
+            "summary": "### Mario Barutti - Installment Offer [offer_installment_20_Mario Barutti]  Merchant: Mario Barutti Offer type: Installment Category: Fashion Terms (English): 3Months - 1.5% Admin Fees  6 Months - 4% Admin Fees  9 Months - 7% Admin Fees  12 Months - 10% Admin Fees   Installment through branches Min Trx amount 500 EGP Installment duration (as listed, Arabic): تقسيط 12 شهر",
+            "record_ids": [
+              "offer_installment_20_Mario Barutti"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0021",
+            "title": "Mantero - Installment Offer",
+            "summary": "### Mantero - Installment Offer [offer_installment_21_Mantero]  Merchant: Mantero Offer type: Installment Category: Fashion Terms (English): 3Months - 1.5% Admin Fees  6 Months - 4% Admin Fees  9 Months - 7% Admin Fees  12 Months - 10% Admin Fees   Installment through branches Min Trx amount 500 EGP Installment duration (as listed, Arabic): تقسيط 12 شهر",
+            "record_ids": [
+              "offer_installment_21_Mantero"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0022",
+            "title": "Guy Laroche - Installment Offer",
+            "summary": "### Guy Laroche - Installment Offer [offer_installment_22_Guy Laroche]  Merchant: Guy Laroche Offer type: Installment Category: Fashion Terms (English): 3Months - 1.5% Admin Fees  6 Months - 4% Admin Fees  9 Months - 7% Admin Fees  12 Months - 10% Admin Fees   Installment through branches Min Trx amount 500 EGP Installment duration (as listed, Arabic): تقسيط 12 شهر",
+            "record_ids": [
+              "offer_installment_22_Guy Laroche"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0023",
+            "title": "Forbed - Installment Offer",
+            "summary": "### Forbed - Installment Offer [offer_installment_23_Forbed]  Merchant: Forbed Offer type: Installment Category: Home Terms (English): 3 Months - 0% Admin fees  6 Months - 0% Admin fees  12 Months - 0% Admin fees Min Trx amount 500 EGP Installment through branches Installment duration (as listed, Arabic): تقسيط 12 شهر",
+            "record_ids": [
+              "offer_installment_23_Forbed"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0024",
+            "title": "Smart Furniture - Installment Offer",
+            "summary": "### Smart Furniture - Installment Offer [offer_installment_24_Smart Furniture]  Merchant: Smart Furniture Offer type: Installment Category: Furniture Terms (English): 6 months -   9.25 % Admin Fees   12 months -   15.25 % Admin Fees Min. transaction amount 500 EGP Installment through branches Installment duration (as listed, Arabic): تقسيط 12 شهر",
+            "record_ids": [
+              "offer_installment_24_Smart Furniture"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0025",
+            "title": "town team - Installment Offer",
+            "summary": "### town team - Installment Offer [offer_installment_25_town team]  Merchant: town team Offer type: Installment Category: Fashion Terms (English): 3 months -     7 % Admin Fees 6 months -     10 % Admin Fees 9 months -   13 % Admin Fees 12 months -   16 % Admin Fees  Min. transaction amount 500 EGP Installment through branches Installment duration (as listed, Arabic): تقسيط 12 شهر",
+            "record_ids": [
+              "offer_installment_25_town team"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0026",
+            "title": "EL AGGAR Auto Tires - Installment Offer",
+            "summary": "### EL AGGAR Auto Tires - Installment Offer [offer_installment_26_EL AGGAR Auto Tires]  Merchant: EL AGGAR Auto Tires Offer type: Installment Category: Automotive Terms (English): 3 months -     0 % Admin Fees 6 months -     0 % Admin Fees 9 months -     0 % Admin Fees 12 months -   0 % Admin Fees  Min. transaction amount 500 EGP Installment through branches Installment duration (as listed, Arabic...",
+            "record_ids": [
+              "offer_installment_26_EL AGGAR Auto Tires"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0027",
+            "title": "Titans Gym - Installment Offer",
+            "summary": "### Titans Gym - Installment Offer [offer_installment_27_Titans Gym]  Merchant: Titans Gym Offer type: Installment Category: Health and wellness Terms (English): 3 Months - 5% Admin Fees 6 Months - 8% Admin Fees 9 Months - 11% Admin Fees 12 Months - 13% Admin Fees Min Trx amount EGP 500 Installment through branches Installment duration (as listed, Arabic): تقسيط 12 شهر",
+            "record_ids": [
+              "offer_installment_27_Titans Gym"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0028",
+            "title": "Dream mobile service - Installment Offer",
+            "summary": "### Dream mobile service - Installment Offer [offer_installment_28_Dream mobile service]  Merchant: Dream mobile service Offer type: Installment Category: Mobile Terms (English): 6 Months - 0% Admin Fees 12 Months - 0% Admin Fees Min Trx amount EGP 500 Installment through branches Installment duration (as listed, Arabic): تقسيط 12 شهر",
+            "record_ids": [
+              "offer_installment_28_Dream mobile service"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0029",
+            "title": "One Stop Gresco - Installment Offer",
+            "summary": "### One Stop Gresco - Installment Offer [offer_installment_29_One Stop Gresco]  Merchant: One Stop Gresco Offer type: Installment Category: Automotive Terms (English): 3 months -    0 % Admin Fees   6 months -    0 % Admin Fees   9 months -    0 % Admin Fees 12 months -  0 % Admin Fees Min. transaction amount 500 EGP Installment through branches Installment duration (as listed, Arabic): تقسيط 12 ش...",
+            "record_ids": [
+              "offer_installment_29_One Stop Gresco"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0030",
+            "title": "First Golf Car - Installment Offer",
+            "summary": "### First Golf Car - Installment Offer [offer_installment_30_First Golf Car]  Merchant: First Golf Car Offer type: Installment Category: Automotive Terms (English): 3 months -   0 % Admin Fees   6 months -   0 % Admin Fees   9 months -   0 % Admin Fees 12 months -   0 % Admin Fees Min. transaction amount 500 EGP Installment through branches Installment duration (as listed, Arabic): تقسيط 12 شهر",
+            "record_ids": [
+              "offer_installment_30_First Golf Car"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0031",
+            "title": "Ravin - Installment Offer",
+            "summary": "### Ravin - Installment Offer [offer_installment_31_Ravin]  Merchant: Ravin Offer type: Installment Category: Fashion Terms (English): 3 months -   0 % Admin Fees   6 months -   0 % Admin Fees   9 months -   0 % Admin Fees 12 months -   0 % Admin Fees Min. transaction amount 500 EGP Installment through branches Installment duration (as listed, Arabic): تقسيط 12 شهر",
+            "record_ids": [
+              "offer_installment_31_Ravin"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0032",
+            "title": "Unionaire - Installment Offer",
+            "summary": "### Unionaire - Installment Offer [offer_installment_32_Unionaire]  Merchant: Unionaire Offer type: Installment Category: Home Appliances Terms (English): 6 months -    0% Admin Fees 9 months -    0% Admin Fees 12 months -  0% Admin Fees Installment through Branches, Website & Distributors   for more info. Please contact 19012 Installment duration (as listed, Arabic): تقسيط 12 شهر",
+            "record_ids": [
+              "offer_installment_32_Unionaire"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0033",
+            "title": "Supa Koto - Installment Offer",
+            "summary": "### Supa Koto - Installment Offer [offer_installment_33_Supa Koto]  Merchant: Supa Koto Offer type: Installment Category: Automotive Terms (English): 3 months -    0% Admin Fees   6 months -    0% Admin Fees  9 months -    0% admin fees  12 months -  0% Admin Fees  Installment through branches Min. transaction amount EGP 500 Installment duration (as listed, Arabic): تقسيط 12 شهر",
+            "record_ids": [
+              "offer_installment_33_Supa Koto"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0034",
+            "title": "Huawei - Installment Offer",
+            "summary": "### Huawei - Installment Offer [offer_installment_34_Huawei]  Merchant: Huawei Offer type: Installment Category: Mobile Terms (English): 3 months -  0 % Admin Fees 6 months -  0 % Admin Fees 12 months -  0 % Admin Fees Min Trx amount EGP 500  Installment through branches - application Installment duration (as listed, Arabic): تقسيط 12 شهر",
+            "record_ids": [
+              "offer_installment_34_Huawei"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0035",
+            "title": "Castle - Installment Offer",
+            "summary": "### Castle - Installment Offer [offer_installment_35_Castle]  Merchant: Castle Offer type: Installment Category: Home Appliances Terms (English): 3 Months -   0% Admin Fees 6 Months -   0% Admin Fees 9 Months -   0% Admin Fees 12 Months - 0% Admin Fees Min Trx 500 EGP Installment through branches Installment duration (as listed, Arabic): تقسيط 12 شهر",
+            "record_ids": [
+              "offer_installment_35_Castle"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0036",
+            "title": "Arabcom - Installment Offer",
+            "summary": "### Arabcom - Installment Offer [offer_installment_36_Arabcom]  Merchant: Arabcom Offer type: Installment Category: Automotive Terms (English): 3 Months -   0% Admin Fees 6 Months -   0% Admin Fees 9 Months -   0% Admin Fees 12 Months - 0% Admin Fees Min Trx 500 EGP Installment through branches Installment duration (as listed, Arabic): تقسيط 12 شهر",
+            "record_ids": [
+              "offer_installment_36_Arabcom"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0037",
+            "title": "ZANUSSI - Installment Offer",
+            "summary": "### ZANUSSI - Installment Offer [offer_installment_37_ZANUSSI]  Merchant: ZANUSSI Offer type: Installment Category: Home Appliances Terms (English): 6 months -   0 % Admin Fees 12 months -   0 % Admin Fees Min Trx amount EGP 500  Installment through branches Installment duration (as listed, Arabic): تقسيط 12 شهر",
+            "record_ids": [
+              "offer_installment_37_ZANUSSI"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0038",
+            "title": "Oriental weavers - Installment Offer",
+            "summary": "### Oriental weavers - Installment Offer [offer_installment_38_Oriental weavers]  Merchant: Oriental weavers Offer type: Installment Category: Home Terms (English): 6 Months -  0% Admin Fees 12 Months - 0% Admin Fees Min Trx 500 EGP Installment through branches Installment duration (as listed, Arabic): تقسيط 12 شهر",
+            "record_ids": [
+              "offer_installment_38_Oriental weavers"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0039",
+            "title": "Hub Furniture - Installment Offer",
+            "summary": "### Hub Furniture - Installment Offer [offer_installment_39_Hub Furniture]  Merchant: Hub Furniture Offer type: Installment Category: Furniture Terms (English): 6 months -   0 % Admin Fees 9 months -   0 % Admin Fees 12 months -   0 % Admin Fees Installment through branches  Min. transaction amount EGP 500 Installment duration (as listed, Arabic): تقسيط 12 شهر",
+            "record_ids": [
+              "offer_installment_39_Hub Furniture"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0040",
+            "title": "kazyon - Installment Offer",
+            "summary": "### kazyon - Installment Offer [offer_installment_40_kazyon]  Merchant: kazyon Offer type: Installment Category: food and beverage Terms (English): 3 months -    7 % Admin Fees 6 months -    10 % Admin Fees 9 months -   13 % Admin Fees 12 months -   16% Admin Fees Installment through branches Installment duration (as listed, Arabic): تقسيط 12 شهر",
+            "record_ids": [
+              "offer_installment_40_kazyon"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0041",
+            "title": "Pixi - Installment Offer",
+            "summary": "### Pixi - Installment Offer [offer_installment_41_Pixi]  Merchant: Pixi Offer type: Installment Category: Fashion Terms (English): 3 months -   6% Admin Fees 6 months -   9% Admin Fees 9 months -  12% Admin Fees 12 months -   15% Admin Fees Min. transaction amount EGP 500 Installment through branches Installment duration (as listed, Arabic): تقسيط 12 شهر",
+            "record_ids": [
+              "offer_installment_41_Pixi"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0042",
+            "title": "Glamour - Installment Offer",
+            "summary": "### Glamour - Installment Offer [offer_installment_42_Glamour]  Merchant: Glamour Offer type: Installment Category: Fashion Terms (English): 6 months -   9 % Admin Fees 12 months -   15 % Admin Fees Min. transaction amount EGP 1000 Installment through branches Installment duration (as listed, Arabic): تقسيط 12 شهر",
+            "record_ids": [
+              "offer_installment_42_Glamour"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0043",
+            "title": "Jumia - Installment Offer",
+            "summary": "### Jumia - Installment Offer [offer_installment_43_Jumia]  Merchant: Jumia Offer type: Installment Category: Online plateform Terms (English): 6 months -   9% Admin Fees 9 months -   12% Admin Fees 12 months -   15% Admin Fees Min Trx amount 500 EGP Installment through application  website Installment duration (as listed, Arabic): تقسيط 12 شهر",
+            "record_ids": [
+              "offer_installment_43_Jumia"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0044",
+            "title": "Pronto - Installment Offer",
+            "summary": "### Pronto - Installment Offer [offer_installment_44_Pronto]  Merchant: Pronto Offer type: Installment Category: Fashion Terms (English): 3 months -   0% Admin Fees 6 months -  8.75 % Admin Fees 9 months -   11.25% Admin Fees 12 months -  14.25 % Admin Fees Min Trx for Installment: 500 EGP Installment through branches Installment through website on 3  months -  with 0% interest and admin fees Inst...",
+            "record_ids": [
+              "offer_installment_44_Pronto"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0045",
+            "title": "Bargasy Auto - Installment Offer",
+            "summary": "### Bargasy Auto - Installment Offer [offer_installment_45_Bargasy Auto]  Merchant: Bargasy Auto Offer type: Installment Category: Automotive Terms (English): 6 months -    0% Admin Fees 9 months -    0 % Admin Fees 12 months -   0 % Admin Fees Min transaction amount 500 EGP   Installment through branchess Installment duration (as listed, Arabic): تقسيط 12 شهر",
+            "record_ids": [
+              "offer_installment_45_Bargasy Auto"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0046",
+            "title": "Carpet land - Installment Offer",
+            "summary": "### Carpet land - Installment Offer [offer_installment_46_Carpet land]  Merchant: Carpet land Offer type: Installment Category: Home Terms (English): 3 months -    0% Admin Fees  6 months -    0% Admin Fees  9 months -    1.5% Admin Fees  12 months -  4.5% Admin Fees  Min. transaction amount EGP 500 Installment valid on selected items    Installment through branches Installment duration (as listed...",
+            "record_ids": [
+              "offer_installment_46_Carpet land"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0047",
+            "title": "Gold Era - Installment Offer",
+            "summary": "### Gold Era - Installment Offer [offer_installment_47_Gold Era]  Merchant: Gold Era Offer type: Installment Category: Fashion Terms (English): 3 months -   7 % Admin Fees 6 months -    10% Admin Fees 9 months -    13 % Admin Fees 12 months -   16 % Admin Fees Min transaction amount 1000 EGP   Installment through branchess Installment duration (as listed, Arabic): تقسيط 12 شهر",
+            "record_ids": [
+              "offer_installment_47_Gold Era"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0048",
+            "title": "Intersport - Installment Offer",
+            "summary": "### Intersport - Installment Offer [offer_installment_48_Intersport]  Merchant: Intersport Offer type: Installment Category: Fashion Terms (English): 3 months -    0 % Admin Fees 6  months -    9 % Admin Fees 9 months -    12 % Admin Fees 12 months -    15 % Admin Fees Min. transaction amount EGP 500 Installment through branches Installment duration (as listed, Arabic): تقسيط 12 شهر",
+            "record_ids": [
+              "offer_installment_48_Intersport"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0049",
+            "title": "IGlo Clinique - Installment Offer",
+            "summary": "### IGlo Clinique - Installment Offer [offer_installment_49_IGlo Clinique]  Merchant: IGlo Clinique Offer type: Installment Category: Health and wellness Terms (English): 3 months -    0 % Admin Fees 6  months -    0 % Admin Fees 9 months -    12 % Admin Fees 12 months -    14 % Admin Fees Min. transaction amount EGP 500 Installment through branches Installment duration (as listed, Arabic): تقسيط...",
+            "record_ids": [
+              "offer_installment_49_IGlo Clinique"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0050",
+            "title": "Eve Clinic - Installment Offer",
+            "summary": "### Eve Clinic - Installment Offer [offer_installment_50_Eve Clinic]  Merchant: Eve Clinic Offer type: Installment Category: Health and wellness Terms (English): 12 months -    14 % Admin Fees Min. transaction amount EGP 500 Installment through branches Installment duration (as listed, Arabic): تقسيط 12 شهر",
+            "record_ids": [
+              "offer_installment_50_Eve Clinic"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0051",
+            "title": "World Games - Installment Offer",
+            "summary": "### World Games - Installment Offer [offer_installment_51_World Games]  Merchant: World Games Offer type: Installment Category: Entertainment Terms (English): 6 months -   0% Admin Fees  12 months -   0% Admin Fees  Min transaction amount 500 EGP   Installment through website and branches Installment duration (as listed, Arabic): تقسيط 12 شهر",
+            "record_ids": [
+              "offer_installment_51_World Games"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0052",
+            "title": "ACACIA JEWELRY - Installment Offer",
+            "summary": "### ACACIA JEWELRY - Installment Offer [offer_installment_52_ACACIA JEWELRY]  Merchant: ACACIA JEWELRY Offer type: Installment Category: Fashion Terms (English): 3 months -   0% Admin Fees 6 months -   0% Admin Fees  9 months -   0% Admin Fees 12 months -   14% Admin Fees  Min transaction amount 500 EGP   Installment through branches Installment duration (as listed, Arabic): تقسيط 12 شهر",
+            "record_ids": [
+              "offer_installment_52_ACACIA JEWELRY"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0053",
+            "title": "Happy Vision - Installment Offer",
+            "summary": "### Happy Vision - Installment Offer [offer_installment_53_Happy Vision]  Merchant: Happy Vision Offer type: Installment Category: Fashion Terms (English): 3 months -   0% Admin Fees 6 months -   0% Admin Fees  9 months -   0% Admin Fees 12 months -   0% Admin Fees  Min transaction amount 500 EGP   Installment through branches Installment duration (as listed, Arabic): تقسيط 12 شهر",
+            "record_ids": [
+              "offer_installment_53_Happy Vision"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0054",
+            "title": "Samir FANOS Jewelry - Installment Offer",
+            "summary": "### Samir FANOS Jewelry - Installment Offer [offer_installment_54_Samir FANOS Jewelry]  Merchant: Samir FANOS Jewelry Offer type: Installment Category: Fashion Terms (English): 3 months -   7 % Admin Fees 6 months -    10% Admin Fees 9 months -    13 % Admin Fees 12 months -   16 % Admin Fees Min transaction amount 1000 EGP   Installment through branchess Installment duration (as listed, Arabic):...",
+            "record_ids": [
+              "offer_installment_54_Samir FANOS Jewelry"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0055",
+            "title": "Town Gas - Installment Offer",
+            "summary": "### Town Gas - Installment Offer [offer_installment_55_Town Gas]  Merchant: Town Gas Offer type: Installment Category: Home Terms (English): 3 months -    8.50% Admin Fees   6 months -    11.50% Admin Fees  12 months -  17.50% Admin Fees  18 months -   23% Admin Fees  Min Trx amount EGP 500  Installment through branches Installment duration (as listed, Arabic): تقسيط 18 شهر",
+            "record_ids": [
+              "offer_installment_55_Town Gas"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0056",
+            "title": "Jawhara - Installment Offer",
+            "summary": "### Jawhara - Installment Offer [offer_installment_56_Jawhara]  Merchant: Jawhara Offer type: Installment Category: Fashion Terms (English): 6 Months - 8% Admin Fees  9 Months - 11% Admin Fees  12 Months - 14% Admin Fees   18 Months - 20% Admin Fees   Installment through branches Min Trx amount 500 EGP Installment duration (as listed, Arabic): تقسيط 18 شهر",
+            "record_ids": [
+              "offer_installment_56_Jawhara"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0057",
+            "title": "Art House - Installment Offer",
+            "summary": "### Art House - Installment Offer [offer_installment_57_Art House]  Merchant: Art House Offer type: Installment Category: Furniture Terms (English): 6 months -  0 % Admin Fees 9 months -  0 % Admin Fees 12 months -  4 % Admin Fees 18 months -  10 % Admin Fees  Min Trx for Installment: 1000 EGP Installment through branches Installment duration (as listed, Arabic): تقسيط 18 شهر",
+            "record_ids": [
+              "offer_installment_57_Art House"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0058",
+            "title": "Fresh - Installment Offer",
+            "summary": "### Fresh - Installment Offer [offer_installment_58_Fresh]  Merchant: Fresh Offer type: Installment Category: Home Appliances Terms (English): 6 Months - 0% Admin fees  9 Months - 0% Admin fees 12 Months - 0% Admin fees 18 Months - 0 % Admin Fees Min Trx amount 1000 EGP Installment through branches Installment duration (as listed, Arabic): تقسيط 18 شهر",
+            "record_ids": [
+              "offer_installment_58_Fresh"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0059",
+            "title": "Express Tires - Installment Offer",
+            "summary": "### Express Tires - Installment Offer [offer_installment_59_Express Tires]  Merchant: Express Tires Offer type: Installment Category: Automotive Terms (English): 6 months -     0 % Admin Fees 9 months -     0 % Admin Fees 12 months -   0 % Admin Fees 18 months -   0 % Admin Fees  Min. transaction amount 500 EGP Installment through branches Installment duration (as listed, Arabic): تقسيط 18 شهر",
+            "record_ids": [
+              "offer_installment_59_Express Tires"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0060",
+            "title": "booking CW - Installment Offer",
+            "summary": "### booking CW - Installment Offer [offer_installment_60_booking CW]  Merchant: booking CW Offer type: Installment Category: Travel agency Terms (English): BM customers can call Booking CW call center 19809 with identify code BM1 Up to 40% discount on hotels reservation inside and outside Egypt. 3 Months - 0 % Admin Fees. 6 Months - 0 % Admin Fees 9 Months - 0 % Admin Fees.. 12 Months - 3 % Admin...",
+            "record_ids": [
+              "offer_installment_60_booking CW"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0061",
+            "title": "Felopateer Palace - Installment Offer",
+            "summary": "### Felopateer Palace - Installment Offer [offer_installment_61_Felopateer Palace]  Merchant: Felopateer Palace Offer type: Installment Category: Fashion Terms (English): 3 months -  6 % Admin Fees  6 months -  9 % Admin Fees 9 months -  12 % Admin Fees   12 months -  15% Admin Fees  18 months -  21% Admin Fees   Min. transaction amount EGP 500 Installment through branches (City Stars, City Center...",
+            "record_ids": [
+              "offer_installment_61_Felopateer Palace"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0062",
+            "title": "Ceramica Cleopatra - Installment Offer",
+            "summary": "### Ceramica Cleopatra - Installment Offer [offer_installment_62_Ceramica Cleopatra]  Merchant: Ceramica Cleopatra Offer type: Installment Category: Home Terms (English): 6 months -   5% Admin Fees  12 months -   11 % Admin Fees  18 months -   17 % Admin Fees  Min. transaction amount EGP 500   Installment through branches Installment duration (as listed, Arabic): تقسيط 18 شهر",
+            "record_ids": [
+              "offer_installment_62_Ceramica Cleopatra"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0063",
+            "title": "SHATTA - Installment Offer",
+            "summary": "### SHATTA - Installment Offer [offer_installment_63_SHATTA]  Merchant: SHATTA Offer type: Installment Category: Home Terms (English): 3 Months - 0% Admin Fees 6 Months - 0% Admin Fees 9 Months - 0% Admin Fees 12 Months - 0% Admin Fees 18 Months -10% Admin Fees Min Trx amount EGP 500 Installment through branches Installment duration (as listed, Arabic): تقسيط 18 شهر",
+            "record_ids": [
+              "offer_installment_63_SHATTA"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0064",
+            "title": "SODIC - Installment Offer",
+            "summary": "### SODIC - Installment Offer [offer_installment_64_SODIC]  Merchant: SODIC Offer type: Installment Category: utilities Terms (English): 3 Months - 0% Admin Fees 6 Months - 0% Admin Fees 9 Months - 0% Admin Fees 12 Months - 0% Admin Fees 18 Months -0% Admin Fees Min Trx amount EGP 500 Installment through POS Installment duration (as listed, Arabic): تقسيط 18 شهر",
+            "record_ids": [
+              "offer_installment_64_SODIC"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0065",
+            "title": "De Backers - Installment Offer",
+            "summary": "### De Backers - Installment Offer [offer_installment_65_De Backers]  Merchant: De Backers Offer type: Installment Category: Fashion Terms (English): 3 months -   0% Admin Fees  6 months -   0% Admin Fees  9 months -   5% Admin Fees  12 months -   5% Admin Fees  18 months -   10% Admin Fees  Min. transaction amount EGP 500   Installment through branches Installment duration (as listed, Arabic): تق...",
+            "record_ids": [
+              "offer_installment_65_De Backers"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0066",
+            "title": "Electronic House - Installment Offer",
+            "summary": "### Electronic House - Installment Offer [offer_installment_66_Electronic House]  Merchant: Electronic House Offer type: Installment Category: Electronics Terms (English): 6 months -    5.5% Admin Fees  6 months -    9.5% Admin Fees  9 months -    11.5% Admin Fees  12 months -  14.5% Admin Fees  18 months -  18.5% Admin Fees  Min. transaction amount EGP 500   Installment through branches Installme...",
+            "record_ids": [
+              "offer_installment_66_Electronic House"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0067",
+            "title": "SPEX - Installment Offer",
+            "summary": "### SPEX - Installment Offer [offer_installment_67_SPEX]  Merchant: SPEX Offer type: Installment Category: Mobile Terms (English): 3 months -   3.56 % Admin Fees 6 months -   5.28 % Admin Fees 9 months -   6% Admin Fees 12 months -   7.41 % Admin Fees 18 months -   12 % Admin Fees  Min Trx amount EGP 500  Installment through branches Installment duration (as listed, Arabic): تقسيط 18 شهر",
+            "record_ids": [
+              "offer_installment_67_SPEX"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0068",
+            "title": "International Weavers - Installment Offer",
+            "summary": "### International Weavers - Installment Offer [offer_installment_68_International Weavers]  Merchant: International Weavers Offer type: Installment Category: Home Terms (English): 6 months -    4.50% Admin Fees  9 months -    6% admin fees  12 months -  7% Admin Fees  18 months -   9% Admin Fees  24 months -   11.50% Admin Fees  Min Trx amount EGP 500  Installment through branches Installment dura...",
+            "record_ids": [
+              "offer_installment_68_International Weavers"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0069",
+            "title": "Telefoni - Installment Offer",
+            "summary": "### Telefoni - Installment Offer [offer_installment_69_Telefoni]  Merchant: Telefoni Offer type: Installment Category: Mobile Terms (English): 6 months -   0% Admin Fees  9 months -    0% Admin Fees  12 months -   0% Admin Fees  18 months -   0% Admin Fees  24 months -   0% Admin Fees  Min. transaction amount EGP 500   Installment through branches Installment duration (as listed, Arabic): تقسيط 24...",
+            "record_ids": [
+              "offer_installment_69_Telefoni"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0070",
+            "title": "2B - Installment Offer",
+            "summary": "### 2B - Installment Offer [offer_installment_70_2B]  Merchant: 2B Offer type: Installment Category: Mobile Terms (English): 3 months -   5 % Admin Fees  6 months -   8 % Admin Fees  9 months -   10 % Admin Fees  12 months -   14.5 % Admin Fees 18 months -    18.5 % Admin Fees 24 months -    22.5 % Admin Fees Min Trx amount EGP 500  Installment through branches Installment duration (as listed, Ara...",
+            "record_ids": [
+              "offer_installment_70_2B"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0071",
+            "title": "Tamco - Installment Offer",
+            "summary": "### Tamco - Installment Offer [offer_installment_71_Tamco]  Merchant: Tamco Offer type: Installment Category: Automotive Terms (English): 6 months -   0 % Admin Fees  9 months -   3.75 % Admin Fees  12 months -   6.75 % Admin Fees 18 months -    12.75 % Admin Fees 24 months -    17.75 % Admin Fees Min. transaction amount 500 EGP Installment through branches Installment duration (as listed, Arabic)...",
+            "record_ids": [
+              "offer_installment_71_Tamco"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0072",
+            "title": "Vodafone - Installment Offer",
+            "summary": "### Vodafone - Installment Offer [offer_installment_72_Vodafone]  Merchant: Vodafone Offer type: Installment Category: Electronics Terms (English): 6 months -  5 % Admin Fees 6 months -  7.50 % Admin Fees 9 months -  10.50 % Admin Fees 12 months -  13 % Admin Fees 18 months -  17.50 % Admin Fees  24 months -  21.50 % Admin Fees Min Trx amount EGP 500  Installment through merchant - application Ins...",
+            "record_ids": [
+              "offer_installment_72_Vodafone"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0073",
+            "title": "Grand Festival Carpet - Installment Offer",
+            "summary": "### Grand Festival Carpet - Installment Offer [offer_installment_73_Grand Festival Carpet]  Merchant: Grand Festival Carpet Offer type: Installment Category: Home Terms (English): 3 months -   0% Admin Fees  6 months -  0% Admin Fees  9 months -   0% Admin Fees  12 months -   4% Admin Fees  18 months -   9% Admin Fees  24 months -   13% Admin Fees  Installment through branches Min. transaction amo...",
+            "record_ids": [
+              "offer_installment_73_Grand Festival Carpet"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0074",
+            "title": "Ehab Center - Installment Offer",
+            "summary": "### Ehab Center - Installment Offer [offer_installment_74_Ehab Center]  Merchant: Ehab Center Offer type: Installment Category: Home Appliances Terms (English): 3 months -  3 % Admin Fees  6 months - 6 % Admin Fees 9 months -  8 % Admin Fees   12 months -  11% Admin Fees  18 months - 18% Admin Fees  24 months - 19% Admin Fees  Min Trx amount EGP 500    Installment through branches Installment dura...",
+            "record_ids": [
+              "offer_installment_74_Ehab Center"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0075",
+            "title": "Hyper Techno - Installment Offer",
+            "summary": "### Hyper Techno - Installment Offer [offer_installment_75_Hyper Techno]  Merchant: Hyper Techno Offer type: Installment Category: Home Appliances Terms (English): 3 months -  3.5 % Admin Fees 6 months -  5 % Admin Fees 9  months -  9 % Admin Fees 12 months -  11 % Admin Fees 18 months -  15% Admin Fees 24 months -  19 % Admin Fees Min Trx amount EGP 500  Installment through branches Installment d...",
+            "record_ids": [
+              "offer_installment_75_Hyper Techno"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0076",
+            "title": "I-klink - Installment Offer",
+            "summary": "### I-klink - Installment Offer [offer_installment_76_I-klink]  Merchant: I-klink Offer type: Installment Category: Mobile Terms (English): 6 months -    0% Admin Fees 9 months -    0% Admin Fees 12 months -  0% Admin Fees 18 months -  0% Admin Fees 24 months -  0% Admin Fees Installment through Branches Installment duration (as listed, Arabic): تقسيط 24 شهر",
+            "record_ids": [
+              "offer_installment_76_I-klink"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0077",
+            "title": "Kandil - Installment Offer",
+            "summary": "### Kandil - Installment Offer [offer_installment_77_Kandil]  Merchant: Kandil Offer type: Installment Category: Home Terms (English): 3 months -  0 % Admin Fees and additional discount 15% 6 months -  0 % Admin Fees and additional discount 10% 12 months -  0 % Admin Fees and additional discount 10% 18 months -  0 % Admin Fees  24 months -  12.5 % Admin Fees Min Trx for Installment: 500 EGP Instal...",
+            "record_ids": [
+              "offer_installment_77_Kandil"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0078",
+            "title": "American Furniture - Installment Offer",
+            "summary": "### American Furniture - Installment Offer [offer_installment_78_American Furniture]  Merchant: American Furniture Offer type: Installment Category: Furniture Terms (English): 3 months -   0% Admin Fees  6 months -   0% Admin Fees  9 months -   0% Admin Fees  12 months -   0% Admin Fees  18 months -   0% Admin Fees  24 months -   0% Admin Fees  Min. transaction amount EGP 500   Installment through...",
+            "record_ids": [
+              "offer_installment_78_American Furniture"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0079",
+            "title": "Istikbal - Installment Offer",
+            "summary": "### Istikbal - Installment Offer [offer_installment_79_Istikbal]  Merchant: Istikbal Offer type: Installment Category: Furniture Terms (English): 3 months -    6 % Admin Fees 6  months -    9 % Admin Fees 9 months -    12 % Admin Fees 12 months -    15 % Admin Fees 18 months -    21 % Admin Fees 24 months -    26 % Admin Fees Min. transaction amount EGP 500 Installment through branches Installment...",
+            "record_ids": [
+              "offer_installment_79_Istikbal"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0080",
+            "title": "Sarar - Installment Offer",
+            "summary": "### Sarar - Installment Offer [offer_installment_80_Sarar]  Merchant: Sarar Offer type: Installment Category: Furniture Terms (English): 3 months -    6 % Admin Fees 6  months -    9 % Admin Fees 9 months -    12 % Admin Fees 12 months -    15 % Admin Fees 18 months -    21 % Admin Fees 24 months -    26 % Admin Fees Min. transaction amount EGP 500 Installment through branches Installment duration...",
+            "record_ids": [
+              "offer_installment_80_Sarar"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0081",
+            "title": "Image Furniture - Installment Offer",
+            "summary": "### Image Furniture - Installment Offer [offer_installment_81_Image Furniture]  Merchant: Image Furniture Offer type: Installment Category: Furniture Terms (English): 6 Months - 0% Admin Fees 9 Months - 11% Admin Fees 12 Months - 13.5% Admin Fees 18 Months - 18% Admin Fees 24 Months - 22% Admin Fees Min Trx amount EGP 500 Installment through branches Installment duration (as listed, Arabic): تقسيط...",
+            "record_ids": [
+              "offer_installment_81_Image Furniture"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0082",
+            "title": "Doctor Phone - Installment Offer",
+            "summary": "### Doctor Phone - Installment Offer [offer_installment_82_Doctor Phone]  Merchant: Doctor Phone Offer type: Installment Category: mobile Terms (English): 3 months -    0 % Admin Fees 6  months -    0 % Admin Fees 9 months -    8 % Admin Fees 12 months -    10 % Admin Fees 18 months -    14.5 % Admin Fees 24 months -    18.5 % Admin Fees Min. transaction amount EGP 500 Installment through branches...",
+            "record_ids": [
+              "offer_installment_82_Doctor Phone"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0083",
+            "title": "CAIRO SALES - Installment Offer",
+            "summary": "### CAIRO SALES - Installment Offer [offer_installment_83_CAIRO SALES]  Merchant: CAIRO SALES Offer type: Installment Category: Home Appliances Terms (English): 6 months -  6% Admin Fees 9 months -  8% Admin Fees   12 months -  10 % Admin Fees   18 months -  14 % Admin Fees 24 months -  18 % Admin Fees Min Trx amount EGP 500  Installment through branches Installment duration (as listed, Arabic): ت...",
+            "record_ids": [
+              "offer_installment_83_CAIRO SALES"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0084",
+            "title": "Solargy E-Mobility - Installment Offer",
+            "summary": "### Solargy E-Mobility - Installment Offer [offer_installment_84_Solargy E-Mobility]  Merchant: Solargy E-Mobility Offer type: Installment Category: Automotive Terms (English): 3 months -   0% Admin Fees 6 months -   0% Admin Fees  9 months -   0% Admin Fees 12 months -   0% Admin Fees  18 months -   0% Admin Fees  24 months -   0% Admin Fees  Min transaction amount 500 EGP   Installment through b...",
+            "record_ids": [
+              "offer_installment_84_Solargy E-Mobility"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0085",
+            "title": "EL Fardy - Installment Offer",
+            "summary": "### EL Fardy - Installment Offer [offer_installment_85_EL Fardy]  Merchant: EL Fardy Offer type: Installment Category: Electronics Terms (English): 3 months -   1.75% Admin Fees 6 months -   4.75% Admin Fees  9 months -   7% Admin Fees 12 months -   9.25% Admin Fees  18 months -   13.5% Admin Fees  24 months -   17.5% Admin Fees  Min transaction amount 500 EGP   Installment through branches Instal...",
+            "record_ids": [
+              "offer_installment_85_EL Fardy"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0086",
+            "title": "NILLEN’S - Installment Offer",
+            "summary": "### NILLEN’S - Installment Offer [offer_installment_86_NILLEN’S]  Merchant: NILLEN’S Offer type: Installment Category: Fashion Terms (English): 3 months -   6 % Admin Fees  Min. transaction amount 500 EGP Installment through branches (  Zamalek - City Stars  -  Degla  -  Mall of Egypt) Installment duration (as listed, Arabic): تقسيط 3 شهور",
+            "record_ids": [
+              "offer_installment_86_NILLEN’S"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0087",
+            "title": "Onyu - Installment Offer",
+            "summary": "### Onyu - Installment Offer [offer_installment_87_Onyu]  Merchant: Onyu Offer type: Installment Category: Fashion Terms (English): 3 months -   6 % Admin Fees  Min. transaction amount 500 EGP Installment through branches ( District 5 El Ain Sokhna - Zamalek) Installment duration (as listed, Arabic): تقسيط 3 شهور",
+            "record_ids": [
+              "offer_installment_87_Onyu"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0088",
+            "title": "Breadfast - Installment Offer",
+            "summary": "### Breadfast - Installment Offer [offer_installment_88_Breadfast]  Merchant: Breadfast Offer type: Installment Category: Home Appliances Terms (English): 3 months -    6% Admin Fees   6 months -    9% Admin Fees  9 months -    12% admin fees  12 months -  14% Admin Fees  18 months -   19% Admin Fees  24 months -   23% Admin Fees  36 months -   30% Admin Fees  Min Trx amount EGP 500  Installment t...",
+            "record_ids": [
+              "offer_installment_88_Breadfast"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0089",
+            "title": "Raneen - Installment Offer",
+            "summary": "### Raneen - Installment Offer [offer_installment_89_Raneen]  Merchant: Raneen Offer type: Installment Category: Home Appliances Terms (English): 3 months -   7% Admin Fees   6 months -   10% Admin Fees  9 months -   12% admin fees  12 months -   14.5 % Admin Fees  18 months -   18.5% Admin Fees  24 months -   22.5% Admin Fees  36 months -   29% Admin Fees  Min Trx amount EGP 500  Installment thro...",
+            "record_ids": [
+              "offer_installment_89_Raneen"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0090",
+            "title": "El Morshedy - Installment Offer",
+            "summary": "### El Morshedy - Installment Offer [offer_installment_90_El Morshedy]  Merchant: El Morshedy Offer type: Installment Category: Electronics Terms (English): 3 months -  5 % Admin Fees 6 months -  8 % Admin Fees 9 months -  11 % Admin Fees 12 months -  13 % Admin Fees 18 months -  20 % Admin Fees 24 months -  22 % Admin Fees 36 months -  34 % Admin Fees Min Trx for Installment: 500 EGP Installment...",
+            "record_ids": [
+              "offer_installment_90_El Morshedy"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0091",
+            "title": "Etisalat - Installment Offer",
+            "summary": "### Etisalat - Installment Offer [offer_installment_91_Etisalat]  Merchant: Etisalat Offer type: Installment Category: Online plateform Terms (English): 3 Months - 7% Admin Fees 6 Months - 10% Admin Fees 9 Months - 13% Admin Fees 12 Months -  16% Admin Fees 18 Months - 22% Admin Fees 24 Months - 27% Admin Fees 36 Months -36% Admin Fees Min Trx amount EGP 1000  Installment through e& application In...",
+            "record_ids": [
+              "offer_installment_91_Etisalat"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0092",
+            "title": "Rizkalla - Installment Offer",
+            "summary": "### Rizkalla - Installment Offer [offer_installment_92_Rizkalla]  Merchant: Rizkalla Offer type: Installment Category: Home Appliances Terms (English): 6 months -    0% Admin Fees  9 months -    0% Admin Fees  12 months -  0% Admin Fees  18 months -  9.75% Admin Fees  24 months -  13.5% Admin Fees  36 months -  21% Admin Fees Min Trx amount EGP 500  Installment through branches Installment duratio...",
+            "record_ids": [
+              "offer_installment_92_Rizkalla"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0093",
+            "title": "noon - Installment Offer",
+            "summary": "### noon - Installment Offer [offer_installment_93_noon]  Merchant: noon Offer type: Installment Category: Online plateform Terms (English): 3 Months - 5% Admin Fees  6 Months - 8% Admin Fees  9 Months - 11% Admin Fees   12 Months - 13% Admin Fees   18 Months - 18% Admin Fees  24 Months - 22% Admin Fees  36 Months - 28% Admin Fees  Min Trx amount EGP 500 Installment through application -website In...",
+            "record_ids": [
+              "offer_installment_93_noon"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0094",
+            "title": "Radio Talaat 2000 - Installment Offer",
+            "summary": "### Radio Talaat 2000 - Installment Offer [offer_installment_95_Radio Talaat 2000]  Merchant: Radio Talaat 2000 Offer type: Installment Category: Home Appliances Terms (English): 6 months -   9% Admin Fees  12 months -   15% Admin Fees 18 months -   21% Admin Fees  24 months -   26% Admin Fees  36 months -   35% Admin Fees Min. transaction amount EGP 1000   Installment through branches Installment...",
+            "record_ids": [
+              "offer_installment_95_Radio Talaat 2000"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0095",
+            "title": "Pepper's Luxury Closet - Installment Offer",
+            "summary": "### Pepper's Luxury Closet - Installment Offer [offer_installment_96_Pepper's Luxury Closet]  Merchant: Pepper's Luxury Closet Offer type: Installment Category: Fashion Terms (English): 6 months -   2.5% Admin Fees  9 months -   3% Admin Fees 12 months -   6 % Admin Fees  18 months -   20.5% Admin Fees  24 months -   25.5% Admin Fees  36 months -   34.5% Admin Fees  Min. transaction amount EGP 100...",
+            "record_ids": [
+              "offer_installment_96_Pepper's Luxury Closet"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0096",
+            "title": "Amazon - Installment Offer",
+            "summary": "### Amazon - Installment Offer [offer_installment_97_Amazon]  Merchant: Amazon Offer type: Installment Category: Online plateform Terms (English): 3 Months -   0% Admin Fees (valid till 17/2/2026) 6 Months -   10% Admin Fees 9 Months -   13% Admin Fees 12 Months - 16% Admin Fees 18 Months - 22% Admin Fees 24 Months - 27% Admin Fees 36 Months -36% Admin Fees Min Trx amount EGP 1000  Installment thr...",
+            "record_ids": [
+              "offer_installment_97_Amazon"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0097",
+            "title": "Center Shaheen - Installment Offer",
+            "summary": "### Center Shaheen - Installment Offer [offer_installment_98_Center Shaheen]  Merchant: Center Shaheen Offer type: Installment Category: Home Appliances Terms (English): 6 months -   0% Admin Fees  9 months -   0% Admin Fees  12 months -   0% Admin Fees  18 months -   18% Admin Fees  24 months -   22% Admin Fees  36 months -   29% Admin Fees Min Trx amount EGP 500    Installment through branches I...",
+            "record_ids": [
+              "offer_installment_98_Center Shaheen"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0098",
+            "title": "RAYA - Installment Offer",
+            "summary": "### RAYA - Installment Offer [offer_installment_99_RAYA]  Merchant: RAYA Offer type: Installment Category: Home Appliances Terms (English): 3 months -   6% Admin Fees 6 months -   8.5% Admin Fees  12 months -   12.75% Admin Fees  18 months -   21% Admin Fees  24 months -   26% Admin Fees  36 months -   35 % Admin Fees Min transaction amount 1000 EGP   Installment through branches Installment durat...",
+            "record_ids": [
+              "offer_installment_99_RAYA"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0099",
+            "title": "Mido Maradona - Installment Offer",
+            "summary": "### Mido Maradona - Installment Offer [offer_installment_100_Mido Maradona]  Merchant: Mido Maradona Offer type: Installment Category: Electronics Terms (English): 3 months -  5.75% Admin Fees   6 months -   8% Admin Fees  9 months -   11.50% admin fees 12 months -   14% Admin Fees  18 months -   20.50% Admin Fees  24 months -   25.50% Admin Fees  36 months -   34.50% Admin Fees  Min. transaction...",
+            "record_ids": [
+              "offer_installment_100_Mido Maradona"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0100",
+            "title": "Anis Abd EL Aziz Jewelry - Installment Offer",
+            "summary": "### Anis Abd EL Aziz Jewelry - Installment Offer [offer_installment_101_Anis Abd EL Aziz Jewelry]  Merchant: Anis Abd EL Aziz Jewelry Offer type: Installment Category: Fashion Terms (English): 3 months -   7 % Admin Fees 6 months -    10% Admin Fees 9 months -    13 % Admin Fees 12 months -   16 % Admin Fees 18 months -     22 % Admin Fees 24 months -     27 % Admin Fees 36 months -     36 % Admin...",
+            "record_ids": [
+              "offer_installment_101_Anis Abd EL Aziz Jewelry"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0101",
+            "title": "Home Art - Installment Offer",
+            "summary": "### Home Art - Installment Offer [offer_installment_102_Home Art]  Merchant: Home Art Offer type: Installment Category: Furniture Terms (English): 3 months -   0% Admin Fees  6 months -   0% Admin Fees  9 months -   0% Admin Fees  12 months -   0% Admin Fees  18 months -   4% Admin Fees  24 months -   8% Admin Fees  36 months -   13.5% Admin Fees  Min. transaction amount EGP 500   Installment thro...",
+            "record_ids": [
+              "offer_installment_102_Home Art"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0102",
+            "title": "Best Buy Electronics - Installment Offer",
+            "summary": "### Best Buy Electronics - Installment Offer [offer_installment_103_Best Buy Electronics]  Merchant: Best Buy Electronics Offer type: Installment Category: Electronics Terms (English): 6 months -   0% Admin Fees  9 months -   0% Admin Fees  12 months -   0% Admin Fees  18 months -   0% Admin Fees  24 months -   0% Admin Fees  36 months -   0% Admin Fees  Min. transaction amount EGP 500   Installme...",
+            "record_ids": [
+              "offer_installment_103_Best Buy Electronics"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0103",
+            "title": "Zahra Furniture - Installment Offer",
+            "summary": "### Zahra Furniture - Installment Offer [offer_installment_104_Zahra Furniture]  Merchant: Zahra Furniture Offer type: Installment Category: Furniture Terms (English): 3 months -    2 % Admin Fees 6  months -    5 % Admin Fees 9 months -    8 % Admin Fees 12 months -    10 % Admin Fees 18 months -    14 % Admin Fees 24 months -    18 % Admin Fees 36 months -    25 % Admin Fees Min. transaction amo...",
+            "record_ids": [
+              "offer_installment_104_Zahra Furniture"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0104",
+            "title": "Top Store - Installment Offer",
+            "summary": "### Top Store - Installment Offer [offer_installment_105_Top Store]  Merchant: Top Store Offer type: Installment Category: Mobile Terms (English): 3 months -    0 % Admin Fees 6  months -    0 % Admin Fees 9 months -    0 % Admin Fees 12 months -    0 % Admin Fees 18 months -    5.5 % Admin Fees 24 months -    9.5 % Admin Fees 36 months -    16.5 % Admin Fees Min. transaction amount EGP 500 Instal...",
+            "record_ids": [
+              "offer_installment_105_Top Store"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0105",
+            "title": "Sednaoui - Installment Offer",
+            "summary": "### Sednaoui - Installment Offer [offer_installment_106_Sednaoui]  Merchant: Sednaoui Offer type: Installment Category: Home Appliances Terms (English): 3 months -    6 % Admin Fees 6  months -    9 % Admin Fees 9 months -    12 % Admin Fees 12 months -    15 % Admin Fees 18 months -    21 % Admin Fees 24 months -    26 % Admin Fees 36 months -    35 % Admin Fees Min. transaction amount EGP 500 In...",
+            "record_ids": [
+              "offer_installment_106_Sednaoui"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0106",
+            "title": "union stores - Installment Offer",
+            "summary": "### union stores - Installment Offer [offer_installment_107_union stores]  Merchant: union stores Offer type: Installment Category: Home Appliances Terms (English): 3 months -    0 % Admin Fees 6  months -    0 % Admin Fees 9 months -    0 % Admin Fees 12 months -    0 % Admin Fees 18 months -    0 % Admin Fees 24 months -    0 % Admin Fees 36 months -    0 % Admin Fees Min. transaction amount EGP...",
+            "record_ids": [
+              "offer_installment_107_union stores"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0107",
+            "title": "EFRESH BEITAK - Installment Offer",
+            "summary": "### EFRESH BEITAK - Installment Offer [offer_installment_108_EFRESH BEITAK]  Merchant: EFRESH BEITAK Offer type: Installment Category: Home Terms (English): 6  months -    5 % Admin Fees 12 months -    10 % Admin Fees 18 months -    17.5 % Admin Fees 24 months -    21.5 % Admin Fees 36 months -    29 % Admin Fees Min. transaction amount EGP 500 Installment through branches Installment duration (as...",
+            "record_ids": [
+              "offer_installment_108_EFRESH BEITAK"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0108",
+            "title": "Ashrafco - Installment Offer",
+            "summary": "### Ashrafco - Installment Offer [offer_installment_109_Ashrafco]  Merchant: Ashrafco Offer type: Installment Category: Automotive Terms (English): 6 months -  0 % Admin Fees  Min. transaction amount 500 EGP Installment through branches Installment duration (as listed, Arabic): تقسيط 6 شهر",
+            "record_ids": [
+              "offer_installment_109_Ashrafco"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0109",
+            "title": "OR - Installment Offer",
+            "summary": "### OR - Installment Offer [offer_installment_110_OR]  Merchant: OR Offer type: Installment Category: Fashion Terms (English): 3 months -    4% Admin Fees  6 months -    7% Admin Fees  Min transaction amount 500 EGP   Installment through branches Installment duration (as listed, Arabic): تقسيط 6 شهر",
+            "record_ids": [
+              "offer_installment_110_OR"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0110",
+            "title": "Hechter Paris - Installment Offer",
+            "summary": "### Hechter Paris - Installment Offer [offer_installment_111_Hechter  Paris]  Merchant: Hechter  Paris Offer type: Installment Category: Fashion Terms (English): 3 months -    4% Admin Fees  6 months -    7% Admin Fees  Min transaction amount 500 EGP   Installment through branches Installment duration (as listed, Arabic): تقسيط 6 شهر",
+            "record_ids": [
+              "offer_installment_111_Hechter  Paris"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0111",
+            "title": "Outlet Zone - Installment Offer",
+            "summary": "### Outlet Zone - Installment Offer [offer_installment_112_Outlet Zone]  Merchant: Outlet Zone Offer type: Installment Category: Fashion Terms (English): 3 months -    4% Admin Fees  6 months -    7% Admin Fees  Min transaction amount 500 EGP   Installment through branches Installment duration (as listed, Arabic): تقسيط 6 شهر",
+            "record_ids": [
+              "offer_installment_112_Outlet Zone"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0112",
+            "title": "Ozone - Installment Offer",
+            "summary": "### Ozone - Installment Offer [offer_installment_113_Ozone]  Merchant: Ozone Offer type: Installment Category: Fashion Terms (English): 3 months -    4% Admin Fees  6 months -    7% Admin Fees  Min transaction amount 500 EGP   Installment through branches Installment duration (as listed, Arabic): تقسيط 6 شهر",
+            "record_ids": [
+              "offer_installment_113_Ozone"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0113",
+            "title": "Calliope - Installment Offer",
+            "summary": "### Calliope - Installment Offer [offer_installment_114_Calliope]  Merchant: Calliope Offer type: Installment Category: Fashion Terms (English): 3 months -    4% Admin Fees  6 months -    7% Admin Fees  Min transaction amount 500 EGP   Installment through branches Installment duration (as listed, Arabic): تقسيط 6 شهر",
+            "record_ids": [
+              "offer_installment_114_Calliope"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0114",
+            "title": "Max Mara - Installment Offer",
+            "summary": "### Max Mara - Installment Offer [offer_installment_115_Max Mara]  Merchant: Max Mara Offer type: Installment Category: Fashion Terms (English): 3 months -    4% Admin Fees  6 months -    7% Admin Fees  Min transaction amount 500 EGP   Installment through branches Installment duration (as listed, Arabic): تقسيط 6 شهر",
+            "record_ids": [
+              "offer_installment_115_Max Mara"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0115",
+            "title": "sports Mall - Installment Offer",
+            "summary": "### sports Mall - Installment Offer [offer_installment_116_sports Mall]  Merchant: sports Mall Offer type: Installment Category: Sport Equipment Terms (English): 3 months -   0 % Admin Fees  6 months -   2.5% Admin Fees   Min. transaction amount EGP 500 Installment through branches Installment duration (as listed, Arabic): تقسيط 6 شهور",
+            "record_ids": [
+              "offer_installment_116_sports Mall"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0116",
+            "title": "Pierre Cardin EG - Installment Offer",
+            "summary": "### Pierre Cardin EG - Installment Offer [offer_installment_117_Pierre Cardin EG]  Merchant: Pierre Cardin EG Offer type: Installment Category: Fashion Terms (English): 6 months -   7 % Admin Fees   Min. transaction amount EGP 500 Installment through branches Installment duration (as listed, Arabic): تقسيط 6 شهور",
+            "record_ids": [
+              "offer_installment_117_Pierre Cardin EG"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0117",
+            "title": "Mazloum - Installment Offer",
+            "summary": "### Mazloum - Installment Offer [offer_installment_118_Mazloum]  Merchant: Mazloum Offer type: Installment Category: Home Terms (English): 3 months -   0% Admin Fees 6 months -   9% Admin Fees Min. transaction amount EGP 1000 Installment through branches Installment duration (as listed, Arabic): تقسيط 6 شهور",
+            "record_ids": [
+              "offer_installment_118_Mazloum"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0118",
+            "title": "Passap - Installment Offer",
+            "summary": "### Passap - Installment Offer [offer_installment_119_Passap]  Merchant: Passap Offer type: Installment Category: Home Appliances Terms (English): 6 months -   0 % Admin Fees   Min. transaction amount EGP 500 Installment through Passap website Installment duration (as listed, Arabic): تقسيط 6 شهور",
+            "record_ids": [
+              "offer_installment_119_Passap"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0119",
+            "title": "Carnielli Egypt - Installment Offer",
+            "summary": "### Carnielli Egypt - Installment Offer [offer_installment_120_Carnielli Egypt]  Merchant: Carnielli Egypt Offer type: Installment Category: Sport Equipments Terms (English): 6 months -   0 % Admin Fees   Min. transaction amount EGP 500 Installment through branches Installment duration (as listed, Arabic): تقسيط 6 شهور",
+            "record_ids": [
+              "offer_installment_120_Carnielli Egypt"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0120",
+            "title": "Ammam - Installment Offer",
+            "summary": "### Ammam - Installment Offer [offer_installment_121_Ammam]  Merchant: Ammam Offer type: Installment Category: Automotive Terms (English): 6 months -   0 % Admin Fees for car maintenance and spare parts Min. transaction amount 500 EGP Installment through branches Installment duration (as listed, Arabic): تقسيط 6 شهور",
+            "record_ids": [
+              "offer_installment_121_Ammam"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0121",
+            "title": "Bouri center - Installment Offer",
+            "summary": "### Bouri center - Installment Offer [offer_installment_122_Bouri center]  Merchant: Bouri center Offer type: Installment Category: Home Terms (English): 6 months -   4.5 % Admin Fees Min. transaction amount 500 EGP Installment through branches Installment duration (as listed, Arabic): تقسيط 6 شهور",
+            "record_ids": [
+              "offer_installment_122_Bouri center"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0122",
+            "title": "Tree - Installment Offer",
+            "summary": "### Tree - Installment Offer [offer_installment_123_Tree]  Merchant: Tree Offer type: Installment Category: Fashion Terms (English): 3 Months - 0% Admin Fees  6 Months - 0% Admin Fees  Min Trx 500 EGP Installment through branches Installment duration (as listed, Arabic): تقسيط 6 شهور",
+            "record_ids": [
+              "offer_installment_123_Tree"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0123",
+            "title": "Kawtchagy - Installment Offer",
+            "summary": "### Kawtchagy - Installment Offer [offer_installment_124_Kawtchagy]  Merchant: Kawtchagy Offer type: Installment Category: Automotive Terms (English): 6 Months - 4% Admin Fees  Min Trx 500 EGP Installment through branches Installment duration (as listed, Arabic): تقسيط 6 شهور",
+            "record_ids": [
+              "offer_installment_124_Kawtchagy"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0124",
+            "title": "Hanimex - Installment Offer",
+            "summary": "### Hanimex - Installment Offer [offer_installment_125_Hanimex]  Merchant: Hanimex Offer type: Installment Category: Furniture Terms (English): 6 months -   0 % Admin Fees   Min. transaction amount 500 EGP Installment through branches Installment duration (as listed, Arabic): تقسيط 6 شهور",
+            "record_ids": [
+              "offer_installment_125_Hanimex"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0125",
+            "title": "Cairo cart - Installment Offer",
+            "summary": "### Cairo cart - Installment Offer [offer_installment_126_Cairo cart]  Merchant: Cairo cart Offer type: Installment Category: Online plateform Terms (English): 6 months -  0% Admin Fees Installment through website Min. transaction amount EGP 500 Installment duration (as listed, Arabic): تقسيط 6 شهور",
+            "record_ids": [
+              "offer_installment_126_Cairo cart"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0126",
+            "title": "Allure Jewelry - Installment Offer",
+            "summary": "### Allure Jewelry - Installment Offer [offer_installment_127_Allure Jewelry]  Merchant: Allure Jewelry Offer type: Installment Category: Jewellry Terms (English): 3 months -  0% Admin Fees  6 months -  0% Admin Fees Installment through branches Min. transaction amount EGP 500 Installment duration (as listed, Arabic): تقسيط 6 شهور",
+            "record_ids": [
+              "offer_installment_127_Allure Jewelry"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0127",
+            "title": "EL Khawaga - Installment Offer",
+            "summary": "### EL Khawaga - Installment Offer [offer_installment_128_EL Khawaga]  Merchant: EL Khawaga Offer type: Installment Category: Home Terms (English): 6 months -  0% Admin Fees Installment through branches Min. transaction amount EGP 500 Installment duration (as listed, Arabic): تقسيط 6 شهور",
+            "record_ids": [
+              "offer_installment_128_EL Khawaga"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0128",
+            "title": "protect me - Installment Offer",
+            "summary": "### protect me - Installment Offer [offer_installment_129_protect me]  Merchant: protect me Offer type: Installment Category: Automotive Terms (English): 6 months -  5% Admin Fees Installment through branches Min. transaction amount EGP 500 Installment duration (as listed, Arabic): تقسيط 6 شهور",
+            "record_ids": [
+              "offer_installment_129_protect me"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0129",
+            "title": "Magma - Installment Offer",
+            "summary": "### Magma - Installment Offer [offer_installment_130_Magma]  Merchant: Magma Offer type: Installment Category: Fashion Terms (English): 6 months -  0% Admin Fees Installment through branches Min. transaction amount EGP 500  10% Discount for all BM Customers on all items without sale on Magma’s website.  discount valid on any item regular price - discounted items not included  Promocode : BM10 Inst...",
+            "record_ids": [
+              "offer_installment_130_Magma"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0130",
+            "title": "CAT - Installment Offer",
+            "summary": "### CAT - Installment Offer [offer_installment_131_CAT]  Merchant: CAT Offer type: Installment Category: Fashion Terms (English): 3 months -  0% Admin Fees 6 months -  3.5% Admin Fees Installment through branches Min. transaction amount EGP 500 Installment duration (as listed, Arabic): تقسيط 6 شهور",
+            "record_ids": [
+              "offer_installment_131_CAT"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0131",
+            "title": "Arena - Installment Offer",
+            "summary": "### Arena - Installment Offer [offer_installment_132_Arena]  Merchant: Arena Offer type: Installment Category: Fashion Terms (English): 3 months -  0% Admin Fees 6 months -  3.5% Admin Fees Installment through branches Min. transaction amount EGP 500 Installment duration (as listed, Arabic): تقسيط 6 شهور",
+            "record_ids": [
+              "offer_installment_132_Arena"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0132",
+            "title": "Hush puppies - Installment Offer",
+            "summary": "### Hush puppies - Installment Offer [offer_installment_133_Hush puppies]  Merchant: Hush puppies Offer type: Installment Category: Fashion Terms (English): 3 months -  0% Admin Fees 6 months -  3.5% Admin Fees Installment through branches Min. transaction amount EGP 500 Installment duration (as listed, Arabic): تقسيط 6 شهور",
+            "record_ids": [
+              "offer_installment_133_Hush puppies"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0133",
+            "title": "Sigma Fit - Installment Offer",
+            "summary": "### Sigma Fit - Installment Offer [offer_installment_134_Sigma Fit]  Merchant: Sigma Fit Offer type: Installment Category: Fashion Terms (English): 6 months -  0% Admin Fees Installment through branches Min. transaction amount EGP 500 Installment duration (as listed, Arabic): تقسيط 6 شهور",
+            "record_ids": [
+              "offer_installment_134_Sigma Fit"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0134",
+            "title": "LULU market - Installment Offer",
+            "summary": "### LULU market - Installment Offer [offer_installment_135_LULU market]  Merchant: LULU market Offer type: Installment Category: food and beverage Terms (English): Installment on 3 months -  6.5% Admin Fees Installment on 6 months -  9.5 % Admin Fees Min. transaction amount EGP 500  Installment through branches Installment duration (as listed, Arabic): تقسيط 6 شهور",
+            "record_ids": [
+              "offer_installment_135_LULU market"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0135",
+            "title": "Raya Auto Premium - Installment Offer",
+            "summary": "### Raya Auto Premium - Installment Offer [offer_installment_136_Raya Auto Premium]  Merchant: Raya Auto Premium Offer type: Installment Category: Automotive Terms (English): 6 months -  0% Admin Fees Installment through branches Min. transaction amount EGP 500 Installment duration (as listed, Arabic): تقسيط 6 شهور",
+            "record_ids": [
+              "offer_installment_136_Raya Auto Premium"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0136",
+            "title": "Ghabour - Installment Offer",
+            "summary": "### Ghabour - Installment Offer [offer_installment_137_Ghabour]  Merchant: Ghabour Offer type: Installment Category: Automotive Terms (English): 6 months -  0% Admin Fees Installment the car maintenance fees  Installment through branches Min. transaction amount EGP 500 Installment duration (as listed, Arabic): تقسيط 6 شهور",
+            "record_ids": [
+              "offer_installment_137_Ghabour"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0137",
+            "title": "Nissan Auto Egypt - Installment Offer",
+            "summary": "### Nissan Auto Egypt - Installment Offer [offer_installment_138_Nissan Auto Egypt]  Merchant: Nissan Auto Egypt Offer type: Installment Category: Automotive Terms (English): 6 months -  0% Admin Fees Installment the car maintenance fees  Min. transaction amount EGP 1000  Installment through branches Hotline No.: 16666 Installment duration (as listed, Arabic): تقسيط 6 شهور",
+            "record_ids": [
+              "offer_installment_138_Nissan Auto Egypt"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0138",
+            "title": "GIG - Installment Offer",
+            "summary": "### GIG - Installment Offer [offer_installment_139_GIG]  Merchant: GIG Offer type: Installment Category: Insurance Terms (English): 6 Months - 0% Admin Fees Min Trx amount EGP 500 Installment through branches Installment duration (as listed, Arabic): تقسيط 6 شهور",
+            "record_ids": [
+              "offer_installment_139_GIG"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0139",
+            "title": "JAC - Installment Offer",
+            "summary": "### JAC - Installment Offer [offer_installment_140_JAC]  Merchant: JAC Offer type: Installment Category: Automotive Terms (English): 6 months -  0% Admin Fees Installment the car maintenance fees  Min. transaction amount EGP 500  Installment through branches Hotline No.: 19292 Asmarat Katameya - Abu Rawash Smart Village Installment duration (as listed, Arabic): تقسيط 6 شهور",
+            "record_ids": [
+              "offer_installment_140_JAC"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0140",
+            "title": "Citroen - Installment Offer",
+            "summary": "### Citroen - Installment Offer [offer_installment_141_Citroen]  Merchant: Citroen Offer type: Installment Category: Automotive Terms (English): 6 months -  0% Admin Fees Installment the car maintenance fees  Min. transaction amount EGP 500  Installment through branches Hotline No.: 19394 Asmarat Katameya sheikh Zayed  - Amreya Branch Alexandria Installment duration (as listed, Arabic): تقسيط 6 شه...",
+            "record_ids": [
+              "offer_installment_141_Citroen"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0141",
+            "title": "Nour Optics - Installment Offer",
+            "summary": "### Nour Optics - Installment Offer [offer_installment_142_Nour Optics]  Merchant: Nour Optics Offer type: Installment Category: Fashion Terms (English): 3 months -   0% Admin Fees  6 months -   0% Admin Fees   Min. transaction amount EGP 500   Installment through branches Installment duration (as listed, Arabic): تقسيط 6 شهور",
+            "record_ids": [
+              "offer_installment_142_Nour Optics"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0142",
+            "title": "Mogma Fagala - Installment Offer",
+            "summary": "### Mogma Fagala - Installment Offer [offer_installment_143_Mogma Fagala]  Merchant: Mogma Fagala Offer type: Installment Category: utilities Terms (English): 6 months -    5 % Admin Fees Min. transaction amount EGP 500 Installment through branches Installment duration (as listed, Arabic): تقسيط 6 شهور",
+            "record_ids": [
+              "offer_installment_143_Mogma Fagala"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0143",
+            "title": "shoeroom - Installment Offer",
+            "summary": "### shoeroom - Installment Offer [offer_installment_144_shoeroom]  Merchant: shoeroom Offer type: Installment Category: Fashion Terms (English): 3 months -  3% Admin Fees 6 months -  6% Admin Fees Installment through branches Min. transaction amount EGP 500 Installment duration (as listed, Arabic): تقسيط 6 شهور",
+            "record_ids": [
+              "offer_installment_144_shoeroom"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0144",
+            "title": "Joly optics - Installment Offer",
+            "summary": "### Joly optics - Installment Offer [offer_installment_145_Joly optics]  Merchant: Joly optics Offer type: Installment Category: Fashion Terms (English): 6 months -  0% Admin Fees Installment through branches Min. transaction amount EGP 500 Installment duration (as listed, Arabic): تقسيط 6 شهور",
+            "record_ids": [
+              "offer_installment_145_Joly optics"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0145",
+            "title": "Alaseel - Installment Offer",
+            "summary": "### Alaseel - Installment Offer [offer_installment_146_Alaseel]  Merchant: Alaseel Offer type: Installment Category: Automotive Terms (English): 3 months -  0% Admin Fees  6 months -  0% Admin Fees Installment through branches Min. transaction amount EGP 500 Installment duration (as listed, Arabic): تقسيط 6 شهور",
+            "record_ids": [
+              "offer_installment_146_Alaseel"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0146",
+            "title": "Meshrqy - Installment Offer",
+            "summary": "### Meshrqy - Installment Offer [offer_installment_147_Meshrqy]  Merchant: Meshrqy Offer type: Installment Category: Home Terms (English): 6 months -   0% Admin Fees  Min transaction amount 500 EGP   Installment through branches Installment duration (as listed, Arabic): تقسيط 6 شهور",
+            "record_ids": [
+              "offer_installment_147_Meshrqy"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0147",
+            "title": "Belal Stationery - Installment Offer",
+            "summary": "### Belal Stationery - Installment Offer [offer_installment_148_Belal Stationery]  Merchant: Belal Stationery Offer type: Installment Category: Stationery Terms (English): 3 Months - 0% Admin Fees 6 Months - 0% Admin Fees Min Trx 500 EGP Installment through branches Installment duration (as listed, Arabic): تقسيط 6 شهور",
+            "record_ids": [
+              "offer_installment_148_Belal Stationery"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0148",
+            "title": "fitness hub - Installment Offer",
+            "summary": "### fitness hub - Installment Offer [offer_installment_149_fitness hub]  Merchant: fitness hub Offer type: Installment Category: Health and wellness Terms (English): 3 Months - 0% Admin Fees 6 Months - 0% Admin Fees Min Trx 500 EGP Installment through branches Installment duration (as listed, Arabic): تقسيط 6 شهور",
+            "record_ids": [
+              "offer_installment_149_fitness hub"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0149",
+            "title": "EIM (Renault) - Installment Offer",
+            "summary": "### EIM (Renault) - Installment Offer [offer_installment_150_EIM (Renault)]  Merchant: EIM (Renault) Offer type: Installment Category: Automotive Terms (English): 3 months -  0% Admin Fees 6 months -  0% Admin Fees Installment through branches Min. transaction amount EGP 500 Installment duration (as listed, Arabic): تقسيط 6 شهور",
+            "record_ids": [
+              "offer_installment_150_EIM (Renault)"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0150",
+            "title": "EIT (KIA) - Installment Offer",
+            "summary": "### EIT (KIA) - Installment Offer [offer_installment_151_EIT (KIA)]  Merchant: EIT (KIA) Offer type: Installment Category: Automotive Terms (English): 3 months -  0% Admin Fees 6 months -  0% Admin Fees Installment through branches Min. transaction amount EGP 500 Installment duration (as listed, Arabic): تقسيط 6 شهور",
+            "record_ids": [
+              "offer_installment_151_EIT (KIA)"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0151",
+            "title": "ALKAN AUTO - Installment Offer",
+            "summary": "### ALKAN AUTO - Installment Offer [offer_installment_152_ALKAN AUTO]  Merchant: ALKAN AUTO Offer type: Installment Category: Automotive Terms (English): 3 months -  0% Admin Fees 6 months -  0% Admin Fees Installment through branches Min. transaction amount EGP 500 Installment duration (as listed, Arabic): تقسيط 6 شهور",
+            "record_ids": [
+              "offer_installment_152_ALKAN AUTO"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0152",
+            "title": "Kabbani - Installment Offer",
+            "summary": "### Kabbani - Installment Offer [offer_installment_153_Kabbani]  Merchant: Kabbani Offer type: Installment Category: Furniture Terms (English): 3 Months - 7% Admin Fees  6 Months - 10% Admin Fees  9 Months - 12% Admin Fees  12 Months - 14% Admin Fees   18 Months - 18% Admin Fees  24 Months - 22% Admin Fees  36 Months - 29% Admin Fees 6 Months - 35% Admin Fees  6 Months - 40% Admin Fees  Installmen...",
+            "record_ids": [
+              "offer_installment_153_Kabbani"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0153",
+            "title": "Dubai Phone - Installment Offer",
+            "summary": "### Dubai Phone - Installment Offer [offer_installment_154_Dubai Phone]  Merchant: Dubai Phone Offer type: Installment Category: mobile Terms (English): 6 months -   0 % Admin Fees 9 months -   7 % Admin Fees 12 months -   9.5 % Admin Fees 18 months -   14 % Admin Fees  24 months -   18 % Admin Fees 36 months -   25 % Admin Fees 48 months -   31 % Admin Fees  60 months -   36 % Admin Fees  Min Trx...",
+            "record_ids": [
+              "offer_installment_154_Dubai Phone"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0154",
+            "title": "Dahab Masr - Installment Offer",
+            "summary": "### Dahab Masr - Installment Offer [offer_installment_155_Dahab Masr]  Merchant: Dahab Masr Offer type: Installment Category: Jewellry Terms (English): 3 months -   5.75 % Admin Fees 6 months -    8.50% Admin Fees 9 months -    11 % Admin Fees 12 months -   14 % Admin Fees 18 months -     18 % Admin Fees 24 months -     22 % Admin Fees 36 months -     29 % Admin Fees 48 months -     35 % Admin Fee...",
+            "record_ids": [
+              "offer_installment_155_Dahab Masr"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0155",
+            "title": "Dream 2000 - Installment Offer",
+            "summary": "### Dream 2000 - Installment Offer [offer_installment_156_Dream 2000]  Merchant: Dream 2000 Offer type: Installment Category: Electronics Terms (English): 6 months -    0 % Admin Fees  9 months -    0 % Admin Fees  12 months -  0 % Admin Fees  18 months -  0 % Admin Fees  24 months -   3 % Admin Fees  36 months -   18 % Admin Fees  48 months -   25 % Admin Fees 60 months -   29 % Admin Fees  Min t...",
+            "record_ids": [
+              "offer_installment_156_Dream 2000"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0156",
+            "title": "Ghallab - Installment Offer",
+            "summary": "### Ghallab - Installment Offer [offer_installment_157_Ghallab]  Merchant: Ghallab Offer type: Installment Category: Electronics Terms (English): 3 months -   0 % Admin Fees 6 months -   0 % Admin Fees 9 months -   0 % Admin Fees 12 months -   0 % Admin Fees 18 months -   0 % Admin Fees  24 months -   0 % Admin Fees 36 months -   27 % Admin Fees 48 months -   33 % Admin Fees  60 months -   38 % Ad...",
+            "record_ids": [
+              "offer_installment_157_Ghallab"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0157",
+            "title": "Games 2 Egypt - Installment Offer",
+            "summary": "### Games 2 Egypt - Installment Offer [offer_installment_158_Games 2 Egypt]  Merchant: Games 2 Egypt Offer type: Installment Category: Entertainment Terms (English): 3 months -  4.5 % Admin Fees 6 months -  5.5 % Admin Fees 9 months -  11.25 % Admin Fees 12 months -  14.25 % Admin Fees 18 months -  21.25 % Admin Fees 24 months -  26.25 % Admin Fees 36 months -  35.25 % Admin Fees 48 months -  42.2...",
+            "record_ids": [
+              "offer_installment_158_Games 2 Egypt"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0158",
+            "title": "Joker stores - Installment Offer",
+            "summary": "### Joker stores - Installment Offer [offer_installment_159_Joker stores]  Merchant: Joker stores Offer type: Installment Category: mobile Terms (English): 3 months -   6 % Admin Fees   6 months -   9 % Admin Fees  9 months -   12 % Admin Fees  12 months -     15 % Admin Fees  18 months -     21 % Admin Fees  24 months -   26 % Admin Fees 36 months -    35 % Admin Fees  48 months -   42 % Admin Fe...",
+            "record_ids": [
+              "offer_installment_159_Joker stores"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0159",
+            "title": "Ehab group - Installment Offer",
+            "summary": "### Ehab group - Installment Offer [offer_installment_160_Ehab group]  Merchant: Ehab group Offer type: Installment Category: Electronics Terms (English): 3 months -  0 % Admin Fees 6 months -  0 % Admin Fees 9 months -  0 % Admin Fees 12 months -  0 % Admin Fees 18 months -  3 % Admin Fees 24 months -  8 % Admin Fees 36 months -  15 % Admin Fees 48 months -  20 % Admin Fees 60 months -  25 % Admi...",
+            "record_ids": [
+              "offer_installment_160_Ehab group"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0160",
+            "title": "XPRS - Installment Offer",
+            "summary": "### XPRS - Installment Offer [offer_installment_161_XPRS]  Merchant: XPRS Offer type: Installment Category: Mobile Terms (English): 6 months -   0 % Admin Fees  9 months -   0 % Admin Fees  12 months -    0 % Admin Fees  18 months -    0 % Admin Fees  24 months -   0 % Admin Fees  36 months -   24 % Admin Fees  48 months -   30 % Admin Fees  60 months -   35 % Admin Fees  Installment through branc...",
+            "record_ids": [
+              "offer_installment_161_XPRS"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0161",
+            "title": "Mobilaty - Installment Offer",
+            "summary": "### Mobilaty - Installment Offer [offer_installment_162_Mobilaty]  Merchant: Mobilaty Offer type: Installment Category: Mobile Terms (English): 3 months -   3.56 % Admin Fees 6 months -   5.28 % Admin Fees  9 months -   6 % Admin Fees 12 months -   7.41 % Admin Fees  18 months -    12 % Admin Fees 24 months -    21 % Admin Fees 36 months -   29 % Admin Fees 48 months -   36 % Admin Fees 60 months...",
+            "record_ids": [
+              "offer_installment_162_Mobilaty"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0162",
+            "title": "MI ( Xiaomi ) - Installment Offer",
+            "summary": "### MI ( Xiaomi ) - Installment Offer [offer_installment_163_MI ( Xiaomi )]  Merchant: MI ( Xiaomi ) Offer type: Installment Category: Mobile Terms (English): 3 months -   3.56 % Admin Fees 6 months -   5.28 % Admin Fees  9 months -   6 % Admin Fees 12 months -   7.41 % Admin Fees  18 months -    12 % Admin Fees 24 months -    21 % Admin Fees 36 months -   29 % Admin Fees 48 months -   36 % Admin...",
+            "record_ids": [
+              "offer_installment_163_MI ( Xiaomi )"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0163",
+            "title": "EL Shennawy - Installment Offer",
+            "summary": "### EL Shennawy - Installment Offer [offer_installment_164_EL Shennawy]  Merchant: EL Shennawy Offer type: Installment Category: Mobile Terms (English): 6 months -   0 % Admin Fees 9 months -   0 % Admin Fees 12 months -   0 % Admin Fees 18 months -   0 % Admin Fees 24 months -   25 % Admin Fees 36 months -   34 % Admin Fees 48 months -   41 % Admin Fees 60 months -   48 % Admin Fees Min. transact...",
+            "record_ids": [
+              "offer_installment_164_EL Shennawy"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0164",
+            "title": "Lazurde - Installment Offer",
+            "summary": "### Lazurde - Installment Offer [offer_installment_165_Lazurde]  Merchant: Lazurde Offer type: Installment Category: Fashion Terms (English): 6 months -   9 % Admin Fees  12 months -     15 % Admin Fees  18 months -     21 % Admin Fees  24 months -   26 % Admin Fees 36 months -    35 % Admin Fees  48 months -   42 % Admin Fees  60 months -    49 % Admin Fees Min transaction amount 1000 EGP   Insta...",
+            "record_ids": [
+              "offer_installment_165_Lazurde"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0165",
+            "title": "IQ stores - Installment Offer",
+            "summary": "### IQ stores - Installment Offer [offer_installment_166_IQ stores]  Merchant: IQ stores Offer type: Installment Category: Mobile Terms (English): 3 months -   0 % Admin Fees 6 months -    0% Admin Fees 9 months -    0 % Admin Fees 12 months -   0 % Admin Fees 18 months -     21 % Admin Fees 24 months -     26 % Admin Fees 36 months -     35 % Admin Fees 48 months -     42 % Admin Fees 60 months -...",
+            "record_ids": [
+              "offer_installment_166_IQ stores"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0166",
+            "title": "Select - Installment Offer",
+            "summary": "### Select - Installment Offer [offer_installment_167_Select]  Merchant: Select Offer type: Installment Category: mobile Terms (English): 6 months -    9.5 % Admin Fees 9 months -    12.5 % Admin Fees 12 months -    15.5 % Admin Fees 18 months -   21.5 % Admin Fees 24 months -   26.5% Admin Fees 36 months -    35.5 % Admin Fees 48 months -    42.5 % Admin Fees 60 months -    49.5 % Admin Fees Min...",
+            "record_ids": [
+              "offer_installment_167_Select"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0167",
+            "title": "Switch Plus - Installment Offer",
+            "summary": "### Switch Plus - Installment Offer [offer_installment_168_Switch Plus]  Merchant: Switch Plus Offer type: Installment Category: mobile Terms (English): 3 months -   3.56 % Admin Fees 6 months -   5.28 % Admin Fees  9 months -   6 % Admin Fees 12 months -   7.41 % Admin Fees  18 months -    12 % Admin Fees 24 months -    21 % Admin Fees 36 months -   29 % Admin Fees 48 months -   36 % Admin Fees 6...",
+            "record_ids": [
+              "offer_installment_168_Switch Plus"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0168",
+            "title": "El Nelien - Installment Offer",
+            "summary": "### El Nelien - Installment Offer [offer_installment_169_El Nelien]  Merchant: El Nelien Offer type: Installment Category: Home Terms (English): 3 months -   6.5 % Admin Fees   6 months -   9 % Admin Fees  9 months -   11 % Admin Fees 12 months -     13.5 % Admin Fees  18 months -     18 % Admin Fees  24 months -   21.5 % Admin Fees 36 months -    28 % Admin Fees  48 months -   34 % Admin Fees  60...",
+            "record_ids": [
+              "offer_installment_169_El Nelien"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0169",
+            "title": "more shopping - Installment Offer",
+            "summary": "### more shopping - Installment Offer [offer_installment_170_more shopping]  Merchant: more shopping Offer type: Installment Category: Electronics Terms (English): 3 months -   0 % Admin Fees  6 months -   0 % Admin Fees  9 months -   0 % Admin Fees  12 months -    13 % Admin Fees  18 months -    17.5 % Admin Fees  24 months -   21.5 % Admin Fees  36 months -   28 % Admin Fees  48 months -   34 %...",
+            "record_ids": [
+              "offer_installment_170_more shopping"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0170",
+            "title": "Allam Automotive - Installment Offer",
+            "summary": "### Allam Automotive - Installment Offer [offer_installment_171_Allam Automotive]  Merchant: Allam Automotive Offer type: Installment Category: Automotive Terms (English): 3 months -   6 % Admin Fees 6 months -   9 % Admin Fees 9 months -   12 % Admin Fees 12 months -   14 % Admin Fees 18 months -   18 % Admin Fees  24 months -   22 % Admin Fees 36 months -   29 % Admin Fees 48 months -   35 % Adm...",
+            "record_ids": [
+              "offer_installment_171_Allam Automotive"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0171",
+            "title": "SERA Store - Installment Offer",
+            "summary": "### SERA Store - Installment Offer [offer_installment_172_SERA Store]  Merchant: SERA Store Offer type: Installment Category: Home Terms (English): 3 months -   0 % Admin Fees 6 months -   2 % Admin Fees 9 months -   5 % Admin Fees 12 months -   7 % Admin Fees 18 months -   11.5 % Admin Fees  24 months -   15.5 % Admin Fees 36 months -   22 % Admin Fees 48 months -   28 % Admin Fees  60 months -...",
+            "record_ids": [
+              "offer_installment_172_SERA Store"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0172",
+            "title": "Tree - Discount Offer",
+            "summary": "### Tree - Discount Offer [offer_discount_2_Tree]  Merchant: Tree Offer type: Discount Category: Fashion Terms (English): 10% Discount for all BM Cardholder  Discount offer is vaild through Tree branches  The offer not be applicable with any other offer",
+            "record_ids": [
+              "offer_discount_2_Tree"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0173",
+            "title": "Pancakes Coffee - Discount Offer",
+            "summary": "### Pancakes Coffee - Discount Offer [offer_discount_3_Pancakes Coffee]  Merchant: Pancakes Coffee Offer type: Discount Category: Food and beverage Terms (English): 10% Discount for all BM Cardholder  Discount offer is vaild through Pancakes Coffee branches  The offer not be applicable with any other offer",
+            "record_ids": [
+              "offer_discount_3_Pancakes Coffee"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0174",
+            "title": "4 level 1 - Discount Offer",
+            "summary": "### 4 level 1 - Discount Offer [offer_discount_4_4 level 1]  Merchant: 4 level 1 Offer type: Discount Category: Education Terms (English): 10% Discount for all BM Cardholder  Discount offer is vaild through branches & website  The discount is not applicable on installment transactions Offer is valid until 31-12-2025",
+            "record_ids": [
+              "offer_discount_4_4 level 1"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0175",
+            "title": "SUSS Pastry - Discount Offer",
+            "summary": "### SUSS Pastry - Discount Offer [offer_discount_5_SUSS Pastry]  Merchant: SUSS Pastry Offer type: Discount Category: Food and beverage Terms (English): 10% off for BM Cardholders debit & Credit card (Platinum, World, VISA Signature, World Elite)",
+            "record_ids": [
+              "offer_discount_5_SUSS Pastry"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0176",
+            "title": "TBS - Discount Offer",
+            "summary": "### TBS - Discount Offer [offer_discount_6_TBS]  Merchant: TBS Offer type: Discount Category: Food and beverage Terms (English): 10% discount for all BM Cardholders through merchant  Discount is not valid in the branches located in Total Gas stations.",
+            "record_ids": [
+              "offer_discount_6_TBS"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0177",
+            "title": "Ibn Elsham - Discount Offer",
+            "summary": "### Ibn Elsham - Discount Offer [offer_discount_7_Ibn Elsham]  Merchant: Ibn Elsham Offer type: Discount Category: Food and beverage Terms (English): Up to 15% Discount for all BM card holder Promo code : BM15",
+            "record_ids": [
+              "offer_discount_7_Ibn Elsham"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0178",
+            "title": "Air Gym - Discount Offer",
+            "summary": "### Air Gym - Discount Offer [offer_discount_8_Air Gym]  Merchant: Air Gym Offer type: Discount Category: Health and wellness Terms (English): 10% Discount for all BM Customers  Discount offer is vaild on all offers",
+            "record_ids": [
+              "offer_discount_8_Air Gym"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0179",
+            "title": "Hunger Station - Discount Offer",
+            "summary": "### Hunger Station - Discount Offer [offer_discount_9_Hunger Station]  Merchant: Hunger Station Offer type: Discount Category: Food and beverage Terms (English): 10% discount for all BM cardholders  This offer not applied with any in-store discounts and promotions.",
+            "record_ids": [
+              "offer_discount_9_Hunger Station"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0180",
+            "title": "Rich Trade - Discount Offer",
+            "summary": "### Rich Trade - Discount Offer [offer_discount_10_Rich Trade]  Merchant: Rich Trade Offer type: Discount Category: Automotive Terms (English): Up to 10% Discount for all BM cardholders on all tires The discount is available through Alex branches",
+            "record_ids": [
+              "offer_discount_10_Rich Trade"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0181",
+            "title": "Temry Market - Discount Offer",
+            "summary": "### Temry Market - Discount Offer [offer_discount_11_Temry Market]  Merchant: Temry Market Offer type: Discount Category: Food and beverage Terms (English): 5% Discount for all BM cardholders This offer not applied with any in-store discounts and promotions call center 15107",
+            "record_ids": [
+              "offer_discount_11_Temry Market"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0182",
+            "title": "Livia clinic - Discount Offer",
+            "summary": "### Livia clinic - Discount Offer [offer_discount_12_Livia clinic]  Merchant: Livia clinic Offer type: Discount Category: Health and wellness Terms (English): Up to 15% Discount for all BM card holder Discount available on selected services",
+            "record_ids": [
+              "offer_discount_12_Livia clinic"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0183",
+            "title": "Al Mokhtabar Labs - Discount Offer",
+            "summary": "### Al Mokhtabar Labs - Discount Offer [offer_discount_14_Al Mokhtabar Labs]  Merchant: Al Mokhtabar Labs Offer type: Discount Category: Health and wellness Terms (English): 10%  discount for all BM cardholder",
+            "record_ids": [
+              "offer_discount_14_Al Mokhtabar Labs"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0184",
+            "title": "Al Borg Labs - Discount Offer",
+            "summary": "### Al Borg Labs - Discount Offer [offer_discount_15_Al Borg Labs]  Merchant: Al Borg Labs Offer type: Discount Category: Health and wellness Terms (English): 10%  discount for all BM cardholder",
+            "record_ids": [
+              "offer_discount_15_Al Borg Labs"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0185",
+            "title": "Al Borg Scan - Discount Offer",
+            "summary": "### Al Borg Scan - Discount Offer [offer_discount_16_Al Borg Scan]  Merchant: Al Borg Scan Offer type: Discount Category: Health and wellness Terms (English): 30%  discount for all BM cardholder",
+            "record_ids": [
+              "offer_discount_16_Al Borg Scan"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0186",
+            "title": "more shopping - Discount Offer",
+            "summary": "### more shopping - Discount Offer [offer_discount_17_more shopping]  Merchant: more shopping Offer type: Discount Category: Electronics Terms (English): 5% discount  for all BM cardholder   Offer can not be combined with another offer.",
+            "record_ids": [
+              "offer_discount_17_more shopping"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0187",
+            "title": "btech - Discount Offer",
+            "summary": "### btech - Discount Offer [offer_discount_18_btech]  Merchant: btech Offer type: Discount Category: Electronics Terms (English): 4% discount on the announced price on cash purchases on any product that doesn’t have a discount. 2% discount on the announced price on cash purchases on laptops and mobiles (excluding APPLE products).",
+            "record_ids": [
+              "offer_discount_18_btech"
+            ],
+            "children": []
+          }
+        ]
+      },
+      {
+        "node_id": "node_0188",
+        "title": "Travel And Airlines",
+        "summary": "## Travel And Airlines",
+        "record_ids": [],
+        "children": [
+          {
+            "node_id": "node_0189",
+            "title": "Egypt air - Installment Offer",
+            "summary": "### Egypt air - Installment Offer [offer_installment_94_Egypt air]  Merchant: Egypt air Offer type: Installment Category: Travel agency Terms (English): 3 months -   6% Admin Fees   6 months -   9% Admin Fees   12 months -   15% Admin Fees  18 months -   21% Admin Fees    24 months -   26% Admin Fees  36 months -   35% Admin Fees Installment through branches Min. transaction amount EGP 500 Install...",
+            "record_ids": [
+              "offer_installment_94_Egypt air"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0190",
+            "title": "Porto Hotels - Discount Offer",
+            "summary": "### Porto Hotels - Discount Offer [offer_discount_13_Porto Hotels]  Merchant: Porto Hotels Offer type: Discount Category: Hotels Terms (English): Discount 10% for all BM card holder  Participating Hotels: (Porto said , Porto Sokhna , Porto marina , Porto Jabal , Porto golf marina , Porto Matrouh) This offer is available through hotel call center 19156",
+            "record_ids": [
+              "offer_discount_13_Porto Hotels"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0191",
+            "title": "Steigenberger cairo pyramids Hotel - Discount Offer",
+            "summary": "### Steigenberger cairo pyramids Hotel - Discount Offer [offer_discount_19_Steigenberger cairo pyramids Hotel]  Merchant: Steigenberger cairo pyramids Hotel Offer type: Discount Category: Hotels Terms (English): up to 15%  discount for all BM cardholder For reservation process Please send email: Reservations.pyramids@steigenberger.com or reservations.cairopyramids@cairopyramidshotel.com Or you can...",
+            "record_ids": [
+              "offer_discount_19_Steigenberger cairo pyramids Hotel"
+            ],
+            "children": []
+          }
+        ]
+      }
+    ]
+  }
+}

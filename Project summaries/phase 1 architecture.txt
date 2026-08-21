@@ -1,0 +1,274 @@
+Phase 1 · Architecture reference
+
+VectorlessBank Pipeline
+How a cell in an Excel sheet becomes an answer on screen — every stage, every file, and the exact point where a language model is trusted and where it is not.
+
+The system is two programs that never run at the same time. One builds a hierarchical index offline and writes it to disk. The other loads that index and answers questions. They share only three things: the Record shape, the TreeIndex shape, and a JSON file on disk.
+
+Confusing them is the single easiest mistake to make here, because "indexing" sounds like something that happens when you ask a question. It doesn't. By the time a user types anything, the tree has already existed for hours.
+
+a language model decides this
+Python decides this — deterministic, repeatable
+That distinction is the spine of the whole design, and it carries through every diagram and stage card below. The governing rule: the model proposes, Python disposes. Every model output is treated as untrusted and re-validated in code before anything downstream sees it.
+
+Program A — Building the index
+Run by hand: python -m indexing.build_index campaigns (or offers, cards). Entry point indexing/build_index.py:30.
+
+1
+Loader
+xlsx / json → Record objects
+list[Record]
+2
+RecordCategorizer
+one LLM call per record
+{record_id: category}
+3
+record_markdown
+# source / ## category / ### record [id]
+data/markdown/<source>.md
+4
+pageindex.md_to_tree
+headings → tree; summaries optional
+structure (forest of dicts)
+5
+Convert & validate
+parse [id], check, TreeIndex.validate()
+TreeIndex
+6
+TreeStorage.save
+data/indexes/<source>_tree.json
+The build pipeline. Only stage 2 is fully model-driven; stage 4 is deterministic structure with an optional model-written summary on each node (the split stripe). Everything else is plain Python.
+1
+Loader — raw file to RecordPython
+loaders/cards_loader.py · offers_loader.py · campaigns_loader.py
+
+Three very different sources are flattened into one dataclass so nothing downstream cares where data came from. Record (loaders/record.py:41) carries id, source, title, search_text, display_text, metadata.
+
+Cards (30 records). Sheet "Credit card", a wide table of ~366 columns. Headers on row 2, real products from row 6 (rows 4–5 are a legend). Repeated column names are disambiguated into Benefits #2, Benefits #3… so no column silently overwrites another. ID is card_{product_code}.
+Offers (189 records). Two flat sheets located by fuzzy name match on "installment" / "discount", tolerating the trailing space in the real sheet name. Arabic and English terms are both kept. Emits two source values, offers_installment and offers_discount.
+Campaigns (3 records). Already-structured JSON; the entire original object is kept as metadata.
+display_text is the clean human-readable rendering that eventually reaches the answering model. search_text is a leftover from the keyword-retrieval era and is no longer read by anything on this path.
+
+2
+RecordCategorizer — one label per recordLLM
+indexing/record_categorizer.py:83 · LLMClient(role="indexer") · temp 0.0 · format=json
+
+Each record gets one question: what is this? The model answers {"category": "Travel And Airlines"}. This is where the semantic grouping now lives.
+
+Three things make it survive a 1B model:
+
+Labels converge. Every prompt includes the categories already assigned, with an instruction to reuse one if it fits. Without this, 189 offers produce nearly 189 unique categories and the tree is flat and useless.
+Input is trimmed. A cards record has ~366 attributes; _summarize_metadata caps the prompt at 12 fields × 120 chars.
+Failure is local. Any exception falls back to "Other" — the record still lands in the tree. Compare the old builder, where one bad JSON response aborted the entire source.
+Labels are then normalised: markdown-significant characters stripped, capped at four words, title-cased, and matched case-insensitively against existing labels so Travel / travel / TRAVEL collapse into one branch.
+
+3
+record_markdown — this file is the tree designPython
+indexing/record_markdown.py:63 → data/markdown/<source>.md
+
+PageIndex derives hierarchy purely from heading depth, so choosing heading levels here is choosing the tree shape:
+
+# Campaigns                                    → root node
+## Installment                                 → category node
+### Egypt Air July 2026 [campaign_egypt_air]   → leaf, holds the record
+Campaign: Egypt Air ...                        → body (display_text)
+Why the ID is in the heading. PageIndex nodes have no concept of a Record — they carry a title, a node id and some text, nothing that points back at our data. Bracketing the ID onto the heading is the only mechanism that survives the round trip, and it stays readable to the traversal model.
+
+Two escaping passes protect the structure. _escape_heading maps [ ] inside a record's own title to parentheses, so the only brackets on a heading line are the ID delimiters. _escape_body prefixes a backslash to any body line matching ^#{1,6}\s, ^**bold**$, or a code fence — a card benefit starting with # would otherwise become a phantom node, and an unmatched triple-backtick would silently swallow every heading after it.
+
+4
+pageindex.md_to_tree — headings become a treePythonLLM (summaries)
+pageindex 0.2.10 · called from pageindex_tree_builder.py:170
+
+Inside the library, in order:
+
+extract_nodes_from_markdown — a regex sweep for ^(#{1,6})\s+(.+)$ and bold-only lines, skipping fenced code blocks.
+extract_node_text_content — each node's text runs from its heading to the next heading.
+build_tree_from_nodes — a stack keyed on heading level assembles the forest.
+write_node_id — preorder ids "0000", "0001", …
+Optional: a summary per node. Nodes under PAGEINDEX_SUMMARY_TOKEN_THRESHOLD (200 tokens) skip the model and use their own raw text; longer nodes get a generated description. Leaves receive summary, nodes with children receive prefix_summary.
+Summaries route through LiteLLM, which is why PAGEINDEX_SUMMARY_MODEL carries an ollama/ prefix — a bare model name would mean OpenAI and fail on a missing key. Returns {doc_name, line_count, structure}, where structure is a list of top-level headings.
+
+Concurrency hazard
+PageIndex fires summary requests with asyncio.gather over all nodes at once, with no concurrency limit. Campaigns (6 nodes) is nothing; offers (~191 nodes) means ~191 simultaneous requests to a 1B local model. Set PAGEINDEX_ADD_NODE_SUMMARY=no for the large sources if that chokes — indexing then makes zero LLM calls beyond categorisation.
+
+5
+Convert and validatePython
+indexing/pageindex_tree_builder.py:210 (_build_root) · :241 (_convert_node)
+
+PageIndex's output is reshaped into the project's own TreeIndex. This adapter is the reason nothing downstream had to change.
+
+Forest to single root. structure is a list; TreeIndex needs one root. We emit exactly one #, so the list has one entry — a synthetic root exists as a fallback so the conversion never depends on that.
+ID recovery. ^(.*)\[(.+)\]\s*$, greedy on purpose so it binds to the last bracket — offer IDs are built from merchant names and can contain one. The captured id is then membership-checked against the real record set, so a category that merely ends in brackets cannot inject a bogus reference.
+Summary selection. summary or prefix_summary or "" — reading only one would leave half the tree blank — then newline-flattened and truncated to PAGEINDEX_MAX_SUMMARY_CHARS (400).
+Node ids become node_0000, matching the format the traversal prompt's examples use.
+Then TreeIndex.validate(valid_record_ids) enforces: unique non-empty node_id, non-empty title, record_ids a list of non-empty strings, and no reference to an unknown record. Finally _warn_about_missing_records catches the opposite failure — records that silently never made it in.
+
+What this buys you
+Because only ### headings carry an ID, records can only attach to leaves and category nodes are structurally empty. The two rules the old prompt begged the model to follow are now unbreakable rather than hopefully-obeyed — and hallucinated record IDs are impossible rather than merely rejected, since no model ever generates one.
+
+6
+TreeStorage.savePython
+indexing/tree_storage.py:47 → data/indexes/<source>_tree.json
+
+Validates once more, then writes UTF-8 JSON with ensure_ascii=False so Arabic text stays readable. This file is the entire handoff between the two programs.
+
+What the index actually contains
+The most misunderstood part of the system.
+
+ON DISK — campaigns_tree.json
+node_id: "node_0002"
+title: "Egypt Air July 2026"
+summary: "12-month plan..."
+children: []
+record_ids: [
+"campaign_..._07"
+]
+IN MEMORY — Record, from raw file
+id: "campaign_..._07"
+source: "campaigns"
+title: "Egypt Air July 2026"
+display_text: "Campaign: ...
+Status: active ..."
+metadata: {...}
+records_by_id[ ]
+The tree is a map. The records are the territory. Neither is useful alone.
+This is why RagPipeline still loads all three raw sources at startup.
+A tree node stores an ID, never content. Retrieval is a join: the traversal model picks nodes, Python turns node IDs into record IDs, then record IDs into Record objects held in memory.
+Two dataclasses define the whole contract (indexing/tree_schema.py):
+
+Type	Fields	Notes
+TreeNode	node_id, title, summary, record_ids, children	Recursive. Category nodes have empty record_ids; leaves hold exactly one.
+TreeIndex	version, source, metadata, root	metadata.builder reads "pageindex" and records the markdown path and summary model used.
+Program B — Answering a question
+Started with python run.py. Requires the tree files from Program A to already exist.
+
+run.py imports the Flask app from app/server.py, which constructs one RagPipeline at import time so the Excel and JSON files aren't re-read on every message. That constructor loads all three record sets and builds three TreeRetrievers, each of which loads its own tree from disk, indexes every node into nodes_by_id for O(1) lookup, builds records_by_id, and validates the tree against the record set it was handed.
+
+POST /api/chat
+{"message": "..."}
+every source, every time — no router yet
+TreeRetriever
+cards
+TreeRetriever
+offers
+TreeRetriever
+campaigns
+≤ 5 Records each
+_retrieve_all
+merge, dedupe by record.id
+build_context
+group by source, === LABEL ===
+Generator LLM
+temp 0.2 · free text
+JSON response
+{answer, sources[]}
+Every question hits all three sources. Phase 2's planned router would choose which retrievers to call — nothing else in this diagram would need to change.
+1
+HTTP entryPython
+app/server.py:41
+
+Reads {"message": "..."}, strips it, returns 400 if empty. Calls pipeline.answer(question). A RuntimeError — almost always Ollama being down — is converted to a 503 with a readable message rather than a stack trace. The response carries sources (each retrieved record's source and title) purely so the UI can show its working.
+
+2
+Traversal — the model reads the mapLLM
+retrievers/tree_retriever.py:99 · LLMClient(role="traverser") · temp 0.0 · format=json
+
+_build_tree_text flattens the whole tree into indented text — node_id, title, summary, and record_ids where present — and the model returns only node ids:
+
+{"selected_node_ids": ["node_0002"]}
+It is explicitly forbidden from answering the question. _parse_selected_nodes then discards anything that isn't a string matching a real node, so an invented id cannot propagate. This is why the summary character cap matters: every node's summary appears in this prompt.
+
+3
+Pruning and resolutionPython
+retrievers/tree_retriever.py:300 (_collect_record_ids) · :322 (_remove_redundant_ancestors)
+
+Drop redundant ancestors. If the model selected both Campaigns and Installment, the broad parent adds nothing and is removed. An ancestor is dropped only when it was itself selected.
+Collect the subtree. A selected node stands for everything beneath it, parents before children, deduped. Category nodes hold no record_ids of their own, so without this, selecting Installment would return nothing.
+Resolve to records through records_by_id, then slice to top_k (MAX_RESULTS_PER_SOURCE, default 5).
+Record the trace. last_trace keeps the query, selected node ids and titles, and resulting record ids — the debugging hook, used by test_tree_retrieval.py.
+4
+Merge and formatPython
+pipeline/rag_pipeline.py:93 · pipeline/context_builder.py:40
+
+Results from all three retrievers are concatenated and deduped by record.id, preserving order. build_context then groups by record.source and renders each group under a human label — === CREDIT CARD PRODUCTS ===, === MERCHANT INSTALLMENT OFFERS === — with each record's display_text beneath. Empty input returns an empty string, which triggers the "nothing matched" branch of the prompt builder.
+
+5
+GenerationLLM
+pipeline/prompt_templates.py · LLMClient() defaults to role="generator" · temp 0.2
+
+The only stage that runs warm rather than at temperature 0, and the only one that isn't asked for JSON. The system prompt binds it to the retrieved context, carves out an exception for general banking knowledge ("what is APR"), and forbids inventing a card name, merchant, fee or date. When nothing was retrieved, the user prompt says so explicitly rather than leaving the context blank.
+
+answer() returns {answer, retrieved_records, context_text} — the last two exist so you can see what the model actually saw.
+
+Inside one retrieval
+_build_tree_text
+whole tree → indented plain text
+Traverser model
+{"selected_node_ids": [...]}
+_parse_selected_nodes
+drop anything not a real node id
+_remove_redundant_ancestors
+selected parent + selected child → keep child
+_collect_record_ids
+walk subtree, parents first, dedupe
+records_by_id → slice top_k
+list[Record] out, last_trace written
+One model call, five deterministic steps around it. The model's only power is naming nodes; every consequence of that choice is computed in Python.
+Where the model is used
+Four call sites, one model, three temperatures — and two different routes to Ollama.
+
+Role	Job	Calls	Temp	Route
+indexer	Category label per record	1 per record	0.0	LLMClient → /api/chat
+PageIndex summaries	Node summary	1 per long node	library default	LiteLLM → Ollama
+traverser	Select node ids	1 per source per question	0.0	LLMClient → /api/chat
+generator	Write the answer	1 per question	0.2	LLMClient → /api/chat
+All four use the same underlying model, Llama-3.2-1B-Instruct, set three times in config/settings.py so the roles can diverge later without touching code.
+
+Two routes, two config keys
+LLMClient posts directly to OLLAMA_BASE_URL/api/chat. PageIndex goes through LiteLLM, which reads the host from the OLLAMA_API_BASE environment variable instead — set for you by os.environ.setdefault in _run_md_to_tree. If you ever move Ollama to another host, both need to agree.
+
+File map
+Path	Role	Status
+run.py, app/server.py	Flask entry, two routes	Active
+config/settings.py	Every tunable value	Active
+llm/llm_client.py	Ollama wrapper, role-aware	Active
+loaders/*.py	Raw files → Record	Active
+indexing/record_categorizer.py	LLM category per record	Active · new
+indexing/record_markdown.py	Record → markdown	Active · new
+indexing/pageindex_tree_builder.py	PageIndex adapter	Active · new
+indexing/tree_schema.py, tree_storage.py	Tree types and persistence	Active
+retrievers/tree_retriever.py	Traversal and resolution	Active
+pipeline/*.py	Orchestration, context, prompts	Active
+indexing/tree_builder.py, batched_tree_builder.py, record_batcher.py, tree_prompt.py	The previous hand-rolled indexer	Unreferenced
+retrievers/keyword_scoring.py, KeywordRetriever	Pre-tree keyword search	Unreferenced
+Record.search_text, TREE_INDEX_* settings	Fed the above	Vestigial
+Nothing unreferenced was deleted — reverting to the old indexer is a two-line change in indexing/build_index.py.
+
+Running it
+ollama serve                              # required by every stage below
+
+cd "Phase 1"
+pip install -r requirements.txt
+
+python -m indexing.build_index campaigns  # then offers, then cards
+python run.py                             # http://127.0.0.1:5000
+Index builds are independent per source and only need repeating when the raw file changes or you re-tune the prompts.
+
+When it breaks
+Symptom	Cause	Where to look
+FileNotFoundError: No tree index exists for source 'cards'	That source was never indexed	Run build_index cards
+HTTP 503 from /api/chat	Ollama not running	ollama serve
+Retrieval returns nothing	Traverser picked no node, or picked one whose subtree is empty	retriever.last_trace
+Tree has one giant category	Categoriser fell back to "Other" repeatedly	[CATEGORIZER] lines; check Ollama was up
+Records missing from the tree	Heading malformed or body escaped a heading	data/markdown/<source>.md — headings map 1:1 to nodes
+Traversal prompt enormous / slow	Summaries expanded to full record text	Lower PAGEINDEX_MAX_SUMMARY_CHARS
+Index build hangs on offers or cards	~191 concurrent summary requests	Set PAGEINDEX_ADD_NODE_SUMMARY=no
+The generated markdown is the best debugging surface in the system. Because heading depth maps one-to-one onto tree nodes, almost any structural bug is visible by reading data/markdown/<source>.md directly.
+
+Known gaps
+Only campaigns_tree.json exists, and it was built by the old indexer. Cards and offers must be built before the app can start.
+No router. All three sources are queried for every question; Phase 2 replaces the fan-out with an LLM choosing which retrievers to call.
+Summary concurrency is unbounded inside PageIndex.
+The retired batched builder still contains two bugs in its merge path — it double-wraps the root and assigns None from a validator that returns nothing. Harmless while unreferenced; relevant if anyone reverts.
+No .gitignore, so __pycache__ directories show as untracked.

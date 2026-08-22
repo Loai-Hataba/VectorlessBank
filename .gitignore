@@ -1,0 +1,28 @@
+# Claude Code local state: worktrees and session scratch. Machine-local,
+# never meant to be shared.
+.claude/
+
+# Python bytecode.
+#
+# NOTE: .pyc files were already tracked in this repo before this file
+# existed, and .gitignore does NOT untrack what git already tracks, so
+# those keep showing as modified whenever the matching .py changes.
+# They are also built per interpreter version (cpython-310 vs
+# cpython-313), so two developers on different Python versions will
+# fight over them. To stop both problems:
+#
+#     git rm -r --cached "Phase 1/**/__pycache__"
+#
+# (removes them from git history going forward, leaves them on disk).
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+.idea/

@@ -1,0 +1,298 @@
+{
+  "version": "1.0",
+  "source": "cards",
+  "metadata": {
+    "builder": "pageindex",
+    "doc_name": "cards",
+    "line_count": 10423,
+    "markdown_path": "C:\\Users\\Omart\\Documents\\GitHub\\VectorlessBank\\Phase 1\\data\\markdown\\cards.md",
+    "node_summaries": "yes",
+    "summary_model": "ollama/llama3.1:8b"
+  },
+  "root": {
+    "node_id": "node_0000",
+    "title": "Credit Card Products",
+    "summary": "# Credit Card Products",
+    "record_ids": [],
+    "children": [
+      {
+        "node_id": "node_0001",
+        "title": "Credit Cards",
+        "summary": "## Credit Cards",
+        "record_ids": [],
+        "children": [
+          {
+            "node_id": "node_0002",
+            "title": "EL ARABY",
+            "summary": "### EL ARABY [card_498]  Card: EL ARABY - Serial: 10 - Business parameter  / Product code: 498 - Product Code: 498 - Product Name: EL ARABY - Active /Not-Active: Not-Active - Product Name #2: EL ARABY - validation period: 24 - validation period  ( RENEWAL ): 24 - Use of Funds: Purchases from (merchants / internet) or cash withdrawal - Use of Funds #2: Using the card credit limit for local purchase...",
+            "record_ids": [
+              "card_498"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0003",
+            "title": "MASTERCARD ISLAMIC GOLD",
+            "summary": "### MASTERCARD ISLAMIC GOLD [card_225]  Card: MASTERCARD ISLAMIC GOLD - Serial: 2 - Business parameter  / Product code: 225 - Product Code: 225 - Product Name: MASTERCARD ISLAMIC GOLD - Active /Not-Active: Not-Active - Product Name #2: MASTERCARD ISLAMIC GOLD - Prpduct Type: Master - Minimum limit: 3000 - Maximum limit: 9999 - validation period: 36 - validation period  ( RENEWAL ): 36 - Use of Car...",
+            "record_ids": [
+              "card_225"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0004",
+            "title": "MASTERCARD GOLD",
+            "summary": "### MASTERCARD GOLD [card_218]  Card: MASTERCARD GOLD  - Serial: 2 - Business parameter  / Product code: 218 - Product Code: 218 - Product Name: MASTERCARD GOLD  - Active /Not-Active: Not-Active - Product Name #2: MASTERCARD GOLD  - Prpduct Type: Master - Minimum limit: 3000 - Maximum limit: 10000 - validation period: 24 - validation period  ( RENEWAL ): 24 - Use of Card: في عمليات الشراء والسحب ا...",
+            "record_ids": [
+              "card_218"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0005",
+            "title": "MASTER CLASSIC AHLY",
+            "summary": "### MASTER CLASSIC AHLY [card_220]  Card: MASTER CLASSIC  AHLY - Serial: 1 - Business parameter  / Product code: 220 - Product Code: 220 - Product Name: MASTER CLASSIC  AHLY - Active /Not-Active: Not-Active - Product Name #2: MASTER CLASSIC  AHLY - Prpduct Type: Master - validation period: 24 - validation period  ( RENEWAL ): 24 - Use of Funds: Purchases from (merchants / internet) or cash withdra...",
+            "record_ids": [
+              "card_220"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0006",
+            "title": "MC MIG CLASSIC",
+            "summary": "### MC MIG CLASSIC [card_216]  Card: MC MIG CLASSIC - Serial: 1 - Business parameter  / Product code: 216 - Product Code: 216 - Product Name: MC MIG CLASSIC - Active /Not-Active: Not-Active - Product Name #2: MC MIG CLASSIC - Prpduct Type: Master - validation period: 24 - validation period  ( RENEWAL ): 24 - Use of Funds: Purchases from (merchants / internet) or cash withdrawal - Use of Funds #2:...",
+            "record_ids": [
+              "card_216"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0007",
+            "title": "GENERIC INSTALL",
+            "summary": "### GENERIC INSTALL [card_791]  Card: GENERIC INSTALL - Serial: 0 - Business parameter  / Product code: 791 - Product Code: 791 - Product Name: GENERIC INSTALL - Active /Not-Active: Not-Active - Product Name #2: GENERIC INSTALL - Maximum limit: 250000 - validation period: 36 - validation period  ( RENEWAL ): 36 - Use of Funds: Purchases from (merchants / internet) or cash withdrawal - Use of Funds...",
+            "record_ids": [
+              "card_791"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0008",
+            "title": "VISA MOGA",
+            "summary": "### VISA MOGA [card_776]  Card: VISA MOGA - Serial: 0 - Business parameter  / Product code: 776 - Product Code: 776 - Product Name: VISA MOGA - Active /Not-Active: Not-Active - Product Name #2: VISA MOGA - Prpduct Type: Visa - validation period: 36 - validation period  ( RENEWAL ): 36 - Use of Funds: Purchases from (merchants / internet) or cash withdrawal - Use of Funds #2: Using the card credit...",
+            "record_ids": [
+              "card_776"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0009",
+            "title": "EDUCATION",
+            "summary": "### EDUCATION [card_499]  Card: EDUCATION - Serial: 0 - Business parameter  / Product code: 499 - Product Code: 499 - Product Name: EDUCATION - Active /Not-Active: Not-Active - Product Name #2: EDUCATION - validation period: 36 - validation period  ( RENEWAL ): 36 - Use of Funds: Purchases from (merchants / internet) or cash withdrawal - Use of Funds #2: Using the card credit limit for local purch...",
+            "record_ids": [
+              "card_499"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0010",
+            "title": "VISA Platinum BM ENPO",
+            "summary": "### VISA Platinum BM ENPO [card_439]  Card: VISA  Platinum BM ENPO - Serial: 0 - Business parameter  / Product code: 439 - Product Code: 439 - Product Name: VISA  Platinum BM ENPO - Active /Not-Active: Not-Active - Product Name #2: VISA  Platinum BM ENPO - Prpduct Type: Visa - validation period: 36 - validation period  ( RENEWAL ): 36 - Use of Funds: Purchases from (merchants / internet) or cash w...",
+            "record_ids": [
+              "card_439"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0011",
+            "title": "VISA GOLD BM ENPO",
+            "summary": "### VISA GOLD BM ENPO [card_438]  Card: VISA GOLD  BM ENPO  - Serial: 0 - Business parameter  / Product code: 438 - Product Code: 438 - Product Name: VISA GOLD  BM ENPO  - Active /Not-Active: Not-Active - Product Name #2: VISA GOLD  BM ENPO  - Prpduct Type: Visa - validation period: 36 - validation period  ( RENEWAL ): 36 - Use of Funds: Purchases from (merchants / internet) or cash withdrawal - U...",
+            "record_ids": [
+              "card_438"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0012",
+            "title": "EL ARABY CREDIT",
+            "summary": "### EL ARABY CREDIT [card_799]  Card: EL ARABY CREDIT - Serial: 10 - Business parameter  / Product code: 799 - Product Code: 799 - Product Name: EL ARABY CREDIT - Active /Not-Active: Active  - Product Name #2: EL ARABY CREDIT - Maximum limit: 250000 - validation period: 24 - validation period  ( RENEWAL ): 24 - Use of Funds: Purchases from (merchants / internet) or cash withdrawal - Use of Funds #...",
+            "record_ids": [
+              "card_799"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0013",
+            "title": "VISA PRIVATE INFINITE",
+            "summary": "### VISA PRIVATE INFINITE [card_304]  Card: VISA PRIVATE INFINITE - Serial: 9 - Business parameter  / Product code: 304 - Product Code: 304 - Product Name: VISA PRIVATE INFINITE - Active /Not-Active: Active  - Product Name #2: VISA PRIVATE INFINITE - Prpduct Type: Visa - Minimum limit: 3000 - Maximum limit: Up to 3000000 - validation period: 36 - validation period  ( RENEWAL ): 36 - Use of Card: ف...",
+            "record_ids": [
+              "card_304"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0014",
+            "title": "VISA INFINITE",
+            "summary": "### VISA INFINITE [card_303]  Card: VISA INFINITE  - Serial: 8 - Business parameter  / Product code: 303 - Product Code: 303 - Product Name: VISA INFINITE  - Active /Not-Active: Active  - Product Name #2: VISA INFINITE  - Prpduct Type: Visa - Minimum limit: 300000 - Maximum limit: Up to 3000000 - validation period: 36 - validation period  ( RENEWAL ): 36 - Use of Card: في عمليات الشراء والسحب النق...",
+            "record_ids": [
+              "card_303"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0015",
+            "title": "VISA SIGNATURE",
+            "summary": "### VISA SIGNATURE [card_415]  Card: VISA SIGNATURE - Serial: 7 - Business parameter  / Product code: 415 - Product Code: 415 - Product Name: VISA SIGNATURE - Active /Not-Active: Active  - Product Name #2: VISA SIGNATURE - Prpduct Type: Visa - Minimum limit: 100000 - Maximum limit: Up to 299999 - validation period: 36 - validation period  ( RENEWAL ): 36 - Use of Card: في عمليات الشراء والسحب النق...",
+            "record_ids": [
+              "card_415"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0016",
+            "title": "MASTER WORLD ELITE",
+            "summary": "### MASTER WORLD ELITE [card_523]  Card: MASTER WORLD ELITE - Serial: 6 - Business parameter  / Product code: 523 - Product Code: 523 - Product Name: MASTER WORLD ELITE - Active /Not-Active: Active  - Product Name #2: MASTER WORLD ELITE - Prpduct Type: Master - Minimum limit: 300000 - Maximum limit: Up to 3000000 - validation period: 36 - validation period  ( RENEWAL ): 36 - Use of Card: في عمليات...",
+            "record_ids": [
+              "card_523"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0017",
+            "title": "MASTER WORLD",
+            "summary": "### MASTER WORLD [card_513]  Card: MASTER WORLD  - Serial: 5 - Business parameter  / Product code: 513 - Product Code: 513 - Product Name: MASTER WORLD  - Active /Not-Active: Active  - Product Name #2: MASTER WORLD  - Prpduct Type: Master - Minimum limit: 100000 - Maximum limit: Up to 299999 - validation period: 36 - validation period  ( RENEWAL ): 36 - Use of Card: في عمليات الشراء والسحب النقدى...",
+            "record_ids": [
+              "card_513"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0018",
+            "title": "New Visa Platinum 8 Digits",
+            "summary": "### New Visa Platinum 8 Digits [card_048]  Card: New Visa Platinum 8 Digits - Serial: 4 - Business parameter  / Product code: 048 - Product Code: 048 - Product Name: New Visa Platinum 8 Digits - Active /Not-Active: Active  - Product Name #2: New Visa Platinum 8 Digits - Prpduct Type: Visa - Minimum limit: 25000 - Maximum limit: Up to 99999 - validation period: 36 - validation period  ( RENEWAL ):...",
+            "record_ids": [
+              "card_048"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0019",
+            "title": "VISA Platinum",
+            "summary": "### VISA Platinum [card_481]  Card: VISA Platinum - Serial: 4 - Business parameter  / Product code: 481 - Product Code: 481 - Product Name: VISA Platinum - Active /Not-Active: Active  - Product Name #2: VISA Platinum - Prpduct Type: Visa - Minimum limit: 25000 - Maximum limit: Up to 99999 - validation period: 36 - validation period  ( RENEWAL ): 36 - Use of Card: في عمليات الشراء والسحب النقدى محل...",
+            "record_ids": [
+              "card_481"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0020",
+            "title": "MASTER PLATINUM",
+            "summary": "### MASTER PLATINUM [card_260]  Card: MASTER PLATINUM - Serial: 4 - Business parameter  / Product code: 260 - Product Code: 260 - Product Name: MASTER PLATINUM - Active /Not-Active: Active  - Product Name #2: MASTER PLATINUM - Prpduct Type: Master - Minimum limit: 25000 - Maximum limit: Up to 99999 - validation period: 36 - validation period  ( RENEWAL ): 36 - Use of Card: في عمليات الشراء والسحب...",
+            "record_ids": [
+              "card_260"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0021",
+            "title": "MASTERCARD ISLAMIC TITANIUM",
+            "summary": "### MASTERCARD ISLAMIC TITANIUM [card_521]  Card: MASTERCARD ISLAMIC TITANIUM  - Serial: 3 - Business parameter  / Product code: 521 - Product Code: 521 - Product Name: MASTERCARD ISLAMIC TITANIUM  - Active /Not-Active: Active  - Product Name #2: MASTERCARD ISLAMIC TITANIUM  - Prpduct Type: Master - Minimum limit: 5000 - Maximum limit: 3000000 - validation period: 36 - validation period  ( RENEWAL...",
+            "record_ids": [
+              "card_521"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0022",
+            "title": "MASTER TITANUIM",
+            "summary": "### MASTER TITANUIM [card_520]  Card: MASTER TITANUIM - Serial: 3 - Business parameter  / Product code: 520 - Product Code: 520 - Product Name: MASTER TITANUIM - Active /Not-Active: Active  - Product Name #2: MASTER TITANUIM - Prpduct Type: Master - Minimum limit: 10000 - Maximum limit: Up to 24999 - validation period: 36 - validation period  ( RENEWAL ): 36 - Use of Card: في عمليات الشراء والسحب...",
+            "record_ids": [
+              "card_520"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0023",
+            "title": "New Visa Gold 8 Digits",
+            "summary": "### New Visa Gold 8 Digits [card_066]  Card: New Visa Gold 8 Digits - Serial: 2 - Business parameter  / Product code: 066 - Product Code: 066 - Product Name: New Visa Gold 8 Digits - Active /Not-Active: Active  - Product Name #2: New Visa Gold 8 Digits - Prpduct Type: Visa - Minimum limit: 3000 - Maximum limit: Up to 9999 - validation period: 36 - validation period  ( RENEWAL ): 36 - Use of Card:...",
+            "record_ids": [
+              "card_066"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0024",
+            "title": "VISA GOLD",
+            "summary": "### VISA GOLD [card_666]  Card: VISA GOLD - Serial: 2 - Business parameter  / Product code: 666 - Product Code: 666 - Product Name: VISA GOLD - Active /Not-Active: Active  - Product Name #2: VISA GOLD - Prpduct Type: Visa - Minimum limit: 3000 - Maximum limit: Up to 9999 - validation period: 36 - validation period  ( RENEWAL ): 36 - Use of Card: في عمليات الشراء والسحب النقدى محليا ودوليا والسداد...",
+            "record_ids": [
+              "card_666"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0025",
+            "title": "MASTERCARD GOLD",
+            "summary": "### MASTERCARD GOLD [card_215]  Card: MASTERCARD GOLD - Serial: 2 - Business parameter  / Product code: 215 - Product Code: 215 - Product Name: MASTERCARD GOLD - Active /Not-Active: Active  - Product Name #2: MASTERCARD GOLD - Prpduct Type: Master - Minimum limit: 3000 - Maximum limit: Up to 9999 - validation period: 36 - validation period  ( RENEWAL ): 36 - Use of Card: في عمليات الشراء والسحب ال...",
+            "record_ids": [
+              "card_215"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0026",
+            "title": "MASTERCARD GOLD",
+            "summary": "### MASTERCARD GOLD [card_205]  Card: MASTERCARD GOLD - Serial: 2 - Business parameter  / Product code: 205 - Product Code: 205 - Product Name: MASTERCARD GOLD - Active /Not-Active: Active  - Product Name #2: MASTERCARD GOLD - Prpduct Type: Master - Minimum limit: 3000 - Maximum limit: Up to 9999 - validation period: 36 - validation period  ( RENEWAL ): 36 - Use of Card: في عمليات الشراء والسحب ال...",
+            "record_ids": [
+              "card_205"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0027",
+            "title": "New Visa Classic 8Digits",
+            "summary": "### New Visa Classic 8Digits [card_055]  Card: New Visa Classic 8Digits - Serial: 1 - Business parameter  / Product code: 055 - Product Code: 055 - Product Name: New Visa Classic 8Digits - Active /Not-Active: Active  - Product Name #2: New Visa Classic 8Digits - Prpduct Type: Visa - Minimum limit: 3000 - Maximum limit: Up to 9999 - validation period: 36 - validation period  ( RENEWAL ): 36 - Use o...",
+            "record_ids": [
+              "card_055"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0028",
+            "title": "VISA CLASSIC",
+            "summary": "### VISA CLASSIC [card_555]  Card: VISA CLASSIC - Serial: 1 - Business parameter  / Product code: 555 - Product Code: 555 - Product Name: VISA CLASSIC - Active /Not-Active: Active  - Product Name #2: VISA CLASSIC - Prpduct Type: Visa - Minimum limit: 3000 - Maximum limit: Up to 9999 - validation period: 36 - validation period  ( RENEWAL ): 36 - Use of Card: في عمليات الشراء والسحب النقدى محليا ودو...",
+            "record_ids": [
+              "card_555"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0029",
+            "title": "MASTER ISLAMIC CLASSIC",
+            "summary": "### MASTER ISLAMIC CLASSIC [card_224]  Card: MASTER ISLAMIC CLASSIC - Serial: 1 - Business parameter  / Product code: 224 - Product Code: 224 - Product Name: MASTER ISLAMIC CLASSIC - Active /Not-Active: Active  - Product Name #2: MASTER ISLAMIC CLASSIC - Prpduct Type: Master - Minimum limit: 2000 - Maximum limit: 4999 - validation period: 36 - validation period  ( RENEWAL ): 36 - Use of Card: في ع...",
+            "record_ids": [
+              "card_224"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0030",
+            "title": "MASTER CLASSIC",
+            "summary": "### MASTER CLASSIC [card_214]  Card: MASTER CLASSIC - Serial: 1 - Business parameter  / Product code: 214 - Product Code: 214 - Product Name: MASTER CLASSIC - Active /Not-Active: Active  - Product Name #2: MASTER CLASSIC - Prpduct Type: Master - Minimum limit: 3000 - Maximum limit: Up to 9999 - validation period: 36 - validation period  ( RENEWAL ): 36 - Use of Card: في عمليات الشراء والسحب النقدى...",
+            "record_ids": [
+              "card_214"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0031",
+            "title": "MASTER CLASSIC",
+            "summary": "### MASTER CLASSIC [card_204]  Card: MASTER CLASSIC  - Serial: 1 - Business parameter  / Product code: 204 - Product Code: 204 - Product Name: MASTER CLASSIC  - Active /Not-Active: Active  - Product Name #2: MASTER CLASSIC  - Prpduct Type: Master - Minimum limit: 3000 - Maximum limit: Up to 9999 - validation period: 36 - validation period  ( RENEWAL ): 36 - Use of Card: في عمليات الشراء والسحب الن...",
+            "record_ids": [
+              "card_204"
+            ],
+            "children": []
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -99,30 +99,24 @@ OLLAMA_GRADER_TEMPERATURE = 0.0
 # COST NOTE: a bigger context window costs memory (KV cache), not
 # accuracy. Keep each role no larger than the biggest prompt it really
 # sends, and lower these on a machine that is short on VRAM.
-OLLAMA_INDEXER_NUM_CTX = int(
-    os.environ.get(
-        "OLLAMA_INDEXER_NUM_CTX",
-        "8192",
-    )
-)
-
+OLLAMA_INDEXER_NUM_CTX = int(os.environ.get("OLLAMA_INDEXER_NUM_CTX","8192",))
 # The largest consumer: an entire tree index in a single prompt. The
 # offers tree needs ~26.5k tokens today, so this leaves headroom for
 # the tree to grow before silent truncation returns.
-OLLAMA_TRAVERSER_NUM_CTX = int(
-    os.environ.get(
-        "OLLAMA_TRAVERSER_NUM_CTX",
-        "32768",
-    )
-)
-
+OLLAMA_TRAVERSER_NUM_CTX = int(os.environ.get("OLLAMA_TRAVERSER_NUM_CTX","32768",))
 # Retrieved records + conversation memory + the answer being written.
-OLLAMA_GENERATOR_NUM_CTX = int(
-    os.environ.get(
-        "OLLAMA_GENERATOR_NUM_CTX",
-        "16384",
-    )
-)
+OLLAMA_GENERATOR_NUM_CTX = int(os.environ.get("OLLAMA_GENERATOR_NUM_CTX","16384",))
+# Small, single-purpose classification/rewrite prompts -- nowhere near
+# what indexer/traverser/generator need. Sized generously above their
+# actual current inputs (a raw message, a contextualized question +
+# source list, a short conversation window) rather than copied from
+# another role's number, per the measured-truncation lesson above:
+# guessing "should be fine" is exactly how the traverser bug happened.
+OLLAMA_ROUTER_NUM_CTX = int(os.environ.get("OLLAMA_ROUTER_NUM_CTX", "4096"))
+OLLAMA_SUMMARIZER_NUM_CTX = int(os.environ.get("OLLAMA_SUMMARIZER_NUM_CTX", "4096"))
+OLLAMA_GUARDRAIL_INPUT_NUM_CTX = int(os.environ.get("OLLAMA_GUARDRAIL_INPUT_NUM_CTX", "2048"))
+OLLAMA_GUARDRAIL_OUTPUT_NUM_CTX = int(os.environ.get("OLLAMA_GUARDRAIL_OUTPUT_NUM_CTX", "4096"))
+OLLAMA_GRADER_NUM_CTX = int(os.environ.get("OLLAMA_GRADER_NUM_CTX", "8192"))
 
 # ---------------------------------------------------------------------------
 # LLM request timeout

@@ -48,6 +48,9 @@ REQUIRES: pip install pageindex; Ollama running locally.
 import asyncio
 import os
 import re
+import typing
+
+from typing_extensions import NotRequired
 
 from config.settings import (
     MARKDOWN_DIR,
@@ -172,6 +175,9 @@ class PageIndexTreeBuilder:
         Call PageIndex. Imported lazily so the rest of the project still
         works if the library is not installed.
         """
+
+        if not hasattr(typing, "NotRequired"):
+            typing.NotRequired = NotRequired
 
         try:
             from pageindex import md_to_tree

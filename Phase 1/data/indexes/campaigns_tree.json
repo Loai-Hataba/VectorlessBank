@@ -5,7 +5,7 @@
     "builder": "pageindex",
     "doc_name": "campaigns",
     "line_count": 54,
-    "markdown_path": "C:\\Users\\Omart\\Documents\\GitHub\\VectorlessBank\\Phase 1\\data\\markdown\\campaigns.md",
+    "markdown_path": "VectorlessBank\\Phase 1\\data\\markdown\\campaigns.md",
     "node_summaries": "yes",
     "summary_model": "ollama/llama3.1:8b"
   },

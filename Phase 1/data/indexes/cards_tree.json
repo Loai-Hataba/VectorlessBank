@@ -1,0 +1,298 @@
+{
+  "version": "1.0",
+  "source": "cards",
+  "metadata": {
+    "builder": "pageindex",
+    "doc_name": "cards",
+    "line_count": 10423,
+    "markdown_path": "D:\\Programming\\Python\\BM Agentic Ai\\VectorlessBank\\Phase 1\\data\\markdown\\cards.md",
+    "node_summaries": "no",
+    "summary_model": null
+  },
+  "root": {
+    "node_id": "node_0000",
+    "title": "Credit Card Products",
+    "summary": "",
+    "record_ids": [],
+    "children": [
+      {
+        "node_id": "node_0001",
+        "title": "Credit Cards",
+        "summary": "",
+        "record_ids": [],
+        "children": [
+          {
+            "node_id": "node_0002",
+            "title": "EL ARABY",
+            "summary": "",
+            "record_ids": [
+              "card_498"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0003",
+            "title": "MASTERCARD ISLAMIC GOLD",
+            "summary": "",
+            "record_ids": [
+              "card_225"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0004",
+            "title": "MASTERCARD GOLD",
+            "summary": "",
+            "record_ids": [
+              "card_218"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0005",
+            "title": "MASTER CLASSIC AHLY",
+            "summary": "",
+            "record_ids": [
+              "card_220"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0006",
+            "title": "MC MIG CLASSIC",
+            "summary": "",
+            "record_ids": [
+              "card_216"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0007",
+            "title": "GENERIC INSTALL",
+            "summary": "",
+            "record_ids": [
+              "card_791"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0008",
+            "title": "VISA MOGA",
+            "summary": "",
+            "record_ids": [
+              "card_776"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0009",
+            "title": "EDUCATION",
+            "summary": "",
+            "record_ids": [
+              "card_499"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0010",
+            "title": "VISA Platinum BM ENPO",
+            "summary": "",
+            "record_ids": [
+              "card_439"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0011",
+            "title": "VISA GOLD BM ENPO",
+            "summary": "",
+            "record_ids": [
+              "card_438"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0012",
+            "title": "EL ARABY CREDIT",
+            "summary": "",
+            "record_ids": [
+              "card_799"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0013",
+            "title": "VISA PRIVATE INFINITE",
+            "summary": "",
+            "record_ids": [
+              "card_304"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0014",
+            "title": "VISA INFINITE",
+            "summary": "",
+            "record_ids": [
+              "card_303"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0015",
+            "title": "VISA SIGNATURE",
+            "summary": "",
+            "record_ids": [
+              "card_415"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0016",
+            "title": "MASTER WORLD ELITE",
+            "summary": "",
+            "record_ids": [
+              "card_523"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0017",
+            "title": "MASTER WORLD",
+            "summary": "",
+            "record_ids": [
+              "card_513"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0018",
+            "title": "New Visa Platinum 8 Digits",
+            "summary": "",
+            "record_ids": [
+              "card_048"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0019",
+            "title": "VISA Platinum",
+            "summary": "",
+            "record_ids": [
+              "card_481"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0020",
+            "title": "MASTER PLATINUM",
+            "summary": "",
+            "record_ids": [
+              "card_260"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0021",
+            "title": "MASTERCARD ISLAMIC TITANIUM",
+            "summary": "",
+            "record_ids": [
+              "card_521"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0022",
+            "title": "MASTER TITANUIM",
+            "summary": "",
+            "record_ids": [
+              "card_520"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0023",
+            "title": "New Visa Gold 8 Digits",
+            "summary": "",
+            "record_ids": [
+              "card_066"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0024",
+            "title": "VISA GOLD",
+            "summary": "",
+            "record_ids": [
+              "card_666"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0025",
+            "title": "MASTERCARD GOLD",
+            "summary": "",
+            "record_ids": [
+              "card_215"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0026",
+            "title": "MASTERCARD GOLD",
+            "summary": "",
+            "record_ids": [
+              "card_205"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0027",
+            "title": "New Visa Classic 8Digits",
+            "summary": "",
+            "record_ids": [
+              "card_055"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0028",
+            "title": "VISA CLASSIC",
+            "summary": "",
+            "record_ids": [
+              "card_555"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0029",
+            "title": "MASTER ISLAMIC CLASSIC",
+            "summary": "",
+            "record_ids": [
+              "card_224"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0030",
+            "title": "MASTER CLASSIC",
+            "summary": "",
+            "record_ids": [
+              "card_214"
+            ],
+            "children": []
+          },
+          {
+            "node_id": "node_0031",
+            "title": "MASTER CLASSIC",
+            "summary": "",
+            "record_ids": [
+              "card_204"
+            ],
+            "children": []
+          }
+        ]
+      }
+    ]
+  }
+}

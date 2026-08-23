@@ -2381,7 +2381,7 @@ class TreeIndex:
         return record_ids
 
 --------------------------------------------------------------------------------------------
-tree_stroage.py
+tree_storage.py
 
 """
 Persistent storage for TreeIndex objects.

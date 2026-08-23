@@ -72,39 +72,6 @@ OLLAMA_TIMEOUT_SECONDS = int(
 )
 
 # ---------------------------------------------------------------------------
-# LLM tree indexing
-# ---------------------------------------------------------------------------
-
-# Maximum number of records sent to the indexer in one LLM request.
-#
-# This is deliberately small because the local 1B model must understand
-# the records, organize them, and generate structured JSON.
-TREE_INDEX_BATCH_SIZE = int(
-    os.environ.get(
-        "TREE_INDEX_BATCH_SIZE",
-        "10",
-    )
-)
-
-# Number of times the indexer may retry after invalid output.
-TREE_INDEX_MAX_RETRIES = int(
-    os.environ.get(
-        "TREE_INDEX_MAX_RETRIES",
-        "0",
-    )
-)
-
-# Maximum number of records a leaf node should directly reference.
-#
-# This prevents a generic category node from becoming a giant bucket.
-TREE_INDEX_MAX_RECORDS_PER_LEAF = int(
-    os.environ.get(
-        "TREE_INDEX_MAX_RECORDS_PER_LEAF",
-        "5",
-    )
-)
-
-# ---------------------------------------------------------------------------
 # PageIndex tree indexing
 # ---------------------------------------------------------------------------
 # The settings above (batch size, retries, records per leaf) belong to the
@@ -116,7 +83,7 @@ TREE_INDEX_MAX_RECORDS_PER_LEAF = int(
 # "yes" gives the traversal LLM more to go on, at one call per node.
 PAGEINDEX_ADD_NODE_SUMMARY = os.environ.get(
     "PAGEINDEX_ADD_NODE_SUMMARY",
-    "yes",
+    "no",
 )
 
 # PageIndex talks to models through LiteLLM, whose naming is
@@ -145,7 +112,7 @@ PAGEINDEX_MAX_SUMMARY_CHARS = int(
 )
 
 # ---------------------------------------------------------------------------
-# Retrieval settings (Phase 1: simple keyword retrieval)
+# Retrieval settings
 # ---------------------------------------------------------------------------
 # Max records each retriever is allowed to return per query. Keeps the
 # context we send to the LLM small and focused instead of dumping

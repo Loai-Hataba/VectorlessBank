@@ -49,6 +49,9 @@ from config.settings import (
     OLLAMA_INDEXER_TEMPERATURE,
     OLLAMA_TRAVERSER_TEMPERATURE,
     OLLAMA_GENERATOR_TEMPERATURE,
+    OLLAMA_INDEXER_NUM_CTX,
+    OLLAMA_TRAVERSER_NUM_CTX,
+    OLLAMA_GENERATOR_NUM_CTX,
     OLLAMA_TIMEOUT_SECONDS,
     OLLAMA_ROUTER_TEMPERATURE,
     OLLAMA_SUMMARIZER_TEMPERATURE,
@@ -82,11 +85,23 @@ class LLMClient:
         "grader": OLLAMA_GRADER_TEMPERATURE,
     }
 
+    # Context window per role. This MUST be sent explicitly: Ollama
+    # otherwise falls back to a small default (4096 for llama3.1:8b)
+    # and silently truncates any longer prompt. See the long comment on
+    # OLLAMA_*_NUM_CTX in config/settings.py for the measurement that
+    # made this necessary.
+    NUM_CTX_BY_ROLE = {
+        "indexer": OLLAMA_INDEXER_NUM_CTX,
+        "traverser": OLLAMA_TRAVERSER_NUM_CTX,
+        "generator": OLLAMA_GENERATOR_NUM_CTX,
+    }
+
     def __init__(
         self,
         role: str = "generator",
         model: str = None,
         temperature: float = None,
+        num_ctx: int = None,
     ):
         
         if role not in self.MODEL_BY_ROLE:
@@ -104,6 +119,12 @@ class LLMClient:
             temperature
             if temperature is not None
             else self.TEMPERATURE_BY_ROLE[role]
+        )
+
+        self.num_ctx = (
+            num_ctx
+            if num_ctx is not None
+            else self.NUM_CTX_BY_ROLE[role]
         )
 
     def generate(
@@ -133,6 +154,10 @@ class LLMClient:
 
             "options": {
                 "temperature": self.temperature,
+
+                # Without this Ollama truncates the prompt to its own
+                # small default and never says so.
+                "num_ctx": self.num_ctx,
             },
         }
 

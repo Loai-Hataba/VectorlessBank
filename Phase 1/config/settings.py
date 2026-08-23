@@ -72,6 +72,58 @@ OLLAMA_GUARDRAIL_INPUT_TEMPERATURE = 0.0
 OLLAMA_GUARDRAIL_OUTPUT_TEMPERATURE = 0.0
 OLLAMA_GRADER_TEMPERATURE = 0.0
 
+# ------------------------------------------------------------
+# Context window (num_ctx)
+# ------------------------------------------------------------
+# WHY THIS EXISTS
+# ---------------
+# Ollama does NOT default to a model's full context window. Unless
+# num_ctx is passed explicitly it uses a small default (4096 tokens for
+# llama3.1:8b) and then SILENTLY TRUNCATES anything longer -- no error,
+# no warning, just a shorter prompt than the one that was sent.
+#
+# This was a real, measured Phase 1 bug, not a theoretical risk. The
+# traversal prompt for the offers tree is ~26,500 tokens; Ollama
+# reported prompt_eval_count=4095, i.e. it discarded ~85% of the tree
+# index. The truncation also cut the tail of the traversal system
+# prompt, so the model stopped returning the required
+# {"selected_node_ids": [...]} shape and emitted invented node IDs.
+# The visible symptom was that EVERY question retrieved the same few
+# records, because the model was never shown the part of the tree that
+# made one question different from another.
+#
+# These are per-role for the same reason models and temperatures are:
+# the roles have genuinely different input sizes. The traverser reads a
+# whole flattened tree; the indexer sees one record at a time.
+#
+# COST NOTE: a bigger context window costs memory (KV cache), not
+# accuracy. Keep each role no larger than the biggest prompt it really
+# sends, and lower these on a machine that is short on VRAM.
+OLLAMA_INDEXER_NUM_CTX = int(
+    os.environ.get(
+        "OLLAMA_INDEXER_NUM_CTX",
+        "8192",
+    )
+)
+
+# The largest consumer: an entire tree index in a single prompt. The
+# offers tree needs ~26.5k tokens today, so this leaves headroom for
+# the tree to grow before silent truncation returns.
+OLLAMA_TRAVERSER_NUM_CTX = int(
+    os.environ.get(
+        "OLLAMA_TRAVERSER_NUM_CTX",
+        "32768",
+    )
+)
+
+# Retrieved records + conversation memory + the answer being written.
+OLLAMA_GENERATOR_NUM_CTX = int(
+    os.environ.get(
+        "OLLAMA_GENERATOR_NUM_CTX",
+        "16384",
+    )
+)
+
 # ---------------------------------------------------------------------------
 # LLM request timeout
 # ---------------------------------------------------------------------------

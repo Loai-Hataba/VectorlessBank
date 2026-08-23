@@ -36,6 +36,8 @@ PROCESSED_DATA_DIR = PROJECT_ROOT / "data" / "processed"
 # Markdown rendered from Records, fed to PageIndex. Also handy to open
 # by hand when a generated tree looks wrong.
 MARKDOWN_DIR = PROJECT_ROOT / "data" / "markdown"
+LOGS_DIR = PROJECT_ROOT / "logs"
+PIPELINE_LOG_PATH = LOGS_DIR / "pipeline.jsonl"
 
 CARDS_XLSX_PATH = RAW_DATA_DIR / "20260306_Product_Catalog_new_version.xlsx"
 OFFERS_XLSX_PATH = RAW_DATA_DIR / "Feb_2026_offers_-_Wave_1_-_Call_Center.xlsx"
@@ -52,6 +54,11 @@ OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
 OLLAMA_INDEXER_MODEL   = "llama3.1:8b"
 OLLAMA_TRAVERSER_MODEL = "llama3.1:8b"
 OLLAMA_GENERATOR_MODEL = "llama3.1:8b"
+OLLAMA_ROUTER_MODEL = "llama3.1:8b"
+OLLAMA_SUMMARIZER_MODEL = "llama3.1:8b"
+OLLAMA_GUARDRAIL_INPUT_MODEL = "llama3.1:8b"
+OLLAMA_GUARDRAIL_OUTPUT_MODEL = "llama3.1:8b"
+OLLAMA_GRADER_MODEL = "llama3.1:8b"
 
 # ------------------------------------------------------------
 # Temperature
@@ -59,6 +66,11 @@ OLLAMA_GENERATOR_MODEL = "llama3.1:8b"
 OLLAMA_INDEXER_TEMPERATURE = 0.0
 OLLAMA_TRAVERSER_TEMPERATURE = 0.0
 OLLAMA_GENERATOR_TEMPERATURE = 0.2
+OLLAMA_ROUTER_TEMPERATURE = 0.0
+OLLAMA_SUMMARIZER_TEMPERATURE = 0.0
+OLLAMA_GUARDRAIL_INPUT_TEMPERATURE = 0.0
+OLLAMA_GUARDRAIL_OUTPUT_TEMPERATURE = 0.0
+OLLAMA_GRADER_TEMPERATURE = 0.0
 
 # ---------------------------------------------------------------------------
 # LLM request timeout
@@ -74,9 +86,6 @@ OLLAMA_TIMEOUT_SECONDS = int(
 # ---------------------------------------------------------------------------
 # PageIndex tree indexing
 # ---------------------------------------------------------------------------
-# The settings above (batch size, retries, records per leaf) belong to the
-# older hand-rolled TreeBuilder/BatchedTreeBuilder. PageIndex processes the
-# whole document at once, so it uses these instead.
 
 # Whether PageIndex should write an LLM-generated summary onto each node.
 # "no" makes indexing fully deterministic and requires no LLM at all;
@@ -118,6 +127,10 @@ PAGEINDEX_MAX_SUMMARY_CHARS = int(
 # context we send to the LLM small and focused instead of dumping
 # everything.
 MAX_RESULTS_PER_SOURCE = int(os.environ.get("MAX_RESULTS_PER_SOURCE", "5"))
+VALID_SOURCES = frozenset({"cards", "offers", "campaigns"})
+
+# how many turns of raw user input to keep in memory.
+MEMORY_RAW_TURNS_KEPT = int(os.environ.get("MEMORY_RAW_TURNS_KEPT", "3"))
 
 # ---------------------------------------------------------------------------
 # Flask app settings

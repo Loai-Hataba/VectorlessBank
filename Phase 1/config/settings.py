@@ -256,6 +256,41 @@ MAX_RESULTS_PER_SOURCE = int(os.environ.get("MAX_RESULTS_PER_SOURCE", "5"))
 # if answers start missing detail that lives late in a record; lower it
 # if prompts are still too large.
 MAX_RECORD_CHARS = int(os.environ.get("MAX_RECORD_CHARS", "6000"))
+
+# ---------------------------------------------------------------------------
+# Corrective RAG / re-ranking (Phase 2)
+# ---------------------------------------------------------------------------
+
+# How many records survive re-ranking and reach the generator.
+#
+# This is the second bound on prompt size, alongside MAX_RECORD_CHARS:
+# that one caps how big a record may be, this one caps how many there
+# may be. Six is enough to answer questions that genuinely span several
+# products while still leaving room for conversation memory.
+RERANK_TOP_K = int(os.environ.get("RERANK_TOP_K", "6"))
+
+# Characters of a record shown to the grader.
+#
+# Much smaller than MAX_RECORD_CHARS because the tasks differ: the
+# generator must quote exact fees and terms, while the grader only has
+# to recognise what a record is about. Sending full records here would
+# recreate the context overflow this project has already been bitten by
+# twice, and would make the grading call as slow as generation.
+GRADER_MAX_RECORD_CHARS = int(
+    os.environ.get("GRADER_MAX_RECORD_CHARS", "1200")
+)
+
+# How many records must be graded fully "relevant" before CRAG accepts
+# the retrieval as Correct. Below this, the Incorrect branch fires and
+# the search is widened once.
+#
+# 1 rather than 0 on purpose. "At least one partially relevant record"
+# is too weak a bar for a local model, which will nearly always find
+# something loosely on-topic -- asked about Carrefour it happily rates a
+# different merchant's installment offer as useful. Requiring a record
+# it was willing to call outright relevant is what makes the corrective
+# branch fire when retrieval has actually missed.
+CRAG_MIN_RELEVANT = int(os.environ.get("CRAG_MIN_RELEVANT", "1"))
 VALID_SOURCES = frozenset({"cards", "offers", "campaigns"})
 
 # how many turns of raw user input to keep in memory.

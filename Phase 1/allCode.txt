@@ -1,2659 +1,475 @@
-appcode.txt
-
-run.py
+Retrievers code.txt
+{
+    base_retriever.py
 
 """
-run.py
+retrievers/base_retriever.py
 
 WHAT THIS FILE DOES
 --------------------
-The single command to start the whole application:
-    python run.py
+Defines two things:
 
-It just imports the Flask app object from app/server.py and runs it.
-Kept separate from app/server.py itself so that server.py can also be
-imported by tests or other scripts without automatically starting a
-web server.
+1. `BaseRetriever` -- the contract every retriever follows: a
+   `retrieve(query, top_k)` method that takes the user's question and
+   returns the most relevant Record objects for that source.
 
-REQUIRES: Ollama running locally (`ollama serve`) with the model from
-          config/settings.py already pulled.
+2. `KeywordRetriever` -- a ready-to-use implementation of that contract
+   using the simple keyword-overlap scoring from keyword_scoring.py.
+   Every Phase 1 retriever (cards, offers, campaigns) is just a
+   one-line subclass of this that says "load your records from this
+   loader" -- see cards_retriever.py for an example.
+
+WHY SPLIT IT THIS WAY
+-----------------------
+Cards, offers, and campaigns retrieval logic was IDENTICAL in Phase 1
+(all keyword matching) -- only the underlying data differed. Rather
+than copy-pasting the same scoring loop three times, we write it once
+here. If in Phase 2 you want ONE specific source to retrieve
+differently (say, campaigns should also filter by active status),
+that source's file stops inheriting from KeywordRetriever and
+implements BaseRetriever directly instead -- the rest of the app
+doesn't need to change, because it only ever calls `.retrieve()`.
+
+INPUTS  : none (abstract class) / a BaseLoader subclass (KeywordRetriever)
+OUTPUTS : none (abstract class) -- subclasses return list[Record]
 """
 
-from app.server import app
-from config.settings import FLASK_HOST, FLASK_PORT, FLASK_DEBUG
-
-if __name__ == "__main__":
-    print(f"Starting BM Retail Banking Assistant on http://{FLASK_HOST}:{FLASK_PORT}")
-    app.run(host=FLASK_HOST, port=FLASK_PORT, debug=FLASK_DEBUG)
+from abc import ABC, abstractmethod
+from loaders.record import Record
+from loaders.base_loader import BaseLoader
+from retrievers.keyword_scoring import score
 
 
+class BaseRetriever(ABC):
+    @abstractmethod
+    def retrieve(self, query: str, top_k: int) -> list[Record]:
+        """
+        Return the `top_k` Records most relevant to `query`.
+        Must be implemented by every subclass.
+        """
+        raise NotImplementedError
 
 
------------------------------------------------------------------------------------------------------------
-settings.py
+class KeywordRetriever(BaseRetriever):
+    """
+    A reusable retriever that loads records once (via the given loader)
+    and scores them against each query using plain keyword overlap.
+    Subclass this and pass a loader instance to get a working retriever
+    for a new source in one line -- see cards_retriever.py.
+    """
+
+    def __init__(self, loader: BaseLoader):
+        self._records: list[Record] = loader.load()
+
+    def retrieve(self, query: str, top_k: int) -> list[Record]:
+        scored = [(score(query, r.search_text), r) for r in self._records]
+        scored = [(s, r) for s, r in scored if s > 0]
+        scored.sort(key=lambda pair: pair[0], reverse=True)
+        return [r for _, r in scored[:top_k]]
+
+
+-----------------------------------------------------------------------------------------------------------------------
+campagins_retriever.py
+
 
 """
-config/settings.py
+retrievers/campaigns_retriever.py
 
 WHAT THIS FILE DOES
 --------------------
-This is the ONE file that holds every "knob" you might want to turn:
-which Ollama model to use, where the data files live, how many
-retrieved records to show the LLM, etc.
+The keyword retriever for the "campaigns" source. All the real logic
+lives in KeywordRetriever (see base_retriever.py) -- this file just
+tells it to load its data from CampaignsLoader.
 
-WHY IT EXISTS
--------------
-If these values were scattered across the codebase (a model name typed
-inside llm_client.py, a file path typed inside cards_loader.py, ...),
-changing your setup later would mean hunting through many files.
-Instead, every other module imports FROM here and never hardcodes
-these values itself. Want to switch from "llama3.1" to "qwen2.5"?
-Change ONE line, here.
+NOTE ON "active" CAMPAIGNS
+----------------------------
+Phase 1 does NOT filter by campaign_status or dates -- it only does
+keyword matching, so an expired campaign could still be returned if
+its words match the query. We deliberately leave that correctness
+concern for Phase 2 (dynamic retrieval / CRAG), so Phase 1 stays
+"vanilla" as intended. Campaign status IS included in each record's
+display_text, so the LLM can still see and mention it if relevant.
 
-INPUTS  : none (this file only reads environment variables, with safe defaults)
-OUTPUTS : constants that other modules import, e.g.
-          from config.settings import OLLAMA_MODEL, DATA_DIR
+INPUTS  : query (str)
+OUTPUTS : list[Record] -- the most relevant campaign records, best first
 """
 
-import os
-from pathlib import Path
-
-# ---------------------------------------------------------------------------
-# Project paths
-# ---------------------------------------------------------------------------
-
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-
-RAW_DATA_DIR = PROJECT_ROOT / "data" / "raw"
-PROCESSED_DATA_DIR = PROJECT_ROOT / "data" / "processed"
-
-# Markdown rendered from Records, fed to PageIndex. Also handy to open
-# by hand when a generated tree looks wrong.
-MARKDOWN_DIR = PROJECT_ROOT / "data" / "markdown"
-
-CARDS_XLSX_PATH = RAW_DATA_DIR / "20260306_Product_Catalog_new_version.xlsx"
-OFFERS_XLSX_PATH = RAW_DATA_DIR / "Feb_2026_offers_-_Wave_1_-_Call_Center.xlsx"
-CAMPAIGNS_JSON_PATH = RAW_DATA_DIR / "campaigns_clean.json"
-
-# ============================================================
-# LLM / OLLAMA CONFIGURATION
-# ============================================================
-OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
-
-# ------------------------------------------------------------
-# Models
-# ------------------------------------------------------------
-OLLAMA_INDEXER_MODEL   = "llama3.1:8b"
-OLLAMA_TRAVERSER_MODEL = "llama3.1:8b"
-OLLAMA_GENERATOR_MODEL = "llama3.1:8b"
-
-# ------------------------------------------------------------
-# Temperature
-# ------------------------------------------------------------
-OLLAMA_INDEXER_TEMPERATURE = 0.0
-OLLAMA_TRAVERSER_TEMPERATURE = 0.0
-OLLAMA_GENERATOR_TEMPERATURE = 0.2
-
-# ---------------------------------------------------------------------------
-# LLM request timeout
-# ---------------------------------------------------------------------------
-
-OLLAMA_TIMEOUT_SECONDS = int(
-    os.environ.get(
-        "OLLAMA_TIMEOUT_SECONDS",
-        "300",
-    )
-)
-
-# ---------------------------------------------------------------------------
-# LLM tree indexing
-# ---------------------------------------------------------------------------
-
-# Maximum number of records sent to the indexer in one LLM request.
-#
-# This is deliberately small because the local 1B model must understand
-# the records, organize them, and generate structured JSON.
-TREE_INDEX_BATCH_SIZE = int(
-    os.environ.get(
-        "TREE_INDEX_BATCH_SIZE",
-        "10",
-    )
-)
-
-# Number of times the indexer may retry after invalid output.
-TREE_INDEX_MAX_RETRIES = int(
-    os.environ.get(
-        "TREE_INDEX_MAX_RETRIES",
-        "0",
-    )
-)
-
-# Maximum number of records a leaf node should directly reference.
-#
-# This prevents a generic category node from becoming a giant bucket.
-TREE_INDEX_MAX_RECORDS_PER_LEAF = int(
-    os.environ.get(
-        "TREE_INDEX_MAX_RECORDS_PER_LEAF",
-        "5",
-    )
-)
-
-# ---------------------------------------------------------------------------
-# PageIndex tree indexing
-# ---------------------------------------------------------------------------
-# The settings above (batch size, retries, records per leaf) belong to the
-# older hand-rolled TreeBuilder/BatchedTreeBuilder. PageIndex processes the
-# whole document at once, so it uses these instead.
-
-# Whether PageIndex should write an LLM-generated summary onto each node.
-# "no" makes indexing fully deterministic and requires no LLM at all;
-# "yes" gives the traversal LLM more to go on, at one call per node.
-PAGEINDEX_ADD_NODE_SUMMARY = os.environ.get(
-    "PAGEINDEX_ADD_NODE_SUMMARY",
-    "yes",
-)
-
-# PageIndex talks to models through LiteLLM, whose naming is
-# "provider/model" -- so the local Ollama model needs an "ollama/" prefix.
-PAGEINDEX_SUMMARY_MODEL = os.environ.get(
-    "PAGEINDEX_SUMMARY_MODEL",
-    f"ollama/{OLLAMA_INDEXER_MODEL}",
-)
-
-# Nodes shorter than this many tokens are not sent to the LLM at all --
-# PageIndex uses their own text as the summary.
-PAGEINDEX_SUMMARY_TOKEN_THRESHOLD = int(
-    os.environ.get(
-        "PAGEINDEX_SUMMARY_TOKEN_THRESHOLD",
-        "200",
-    )
-)
-
-# Every node summary is shown to the traversal LLM, so an un-truncated
-# summary of a 366-column card record would blow up the traversal prompt.
-PAGEINDEX_MAX_SUMMARY_CHARS = int(
-    os.environ.get(
-        "PAGEINDEX_MAX_SUMMARY_CHARS",
-        "400",
-    )
-)
-
-# ---------------------------------------------------------------------------
-# Retrieval settings (Phase 1: simple keyword retrieval)
-# ---------------------------------------------------------------------------
-# Max records each retriever is allowed to return per query. Keeps the
-# context we send to the LLM small and focused instead of dumping
-# everything.
-MAX_RESULTS_PER_SOURCE = int(os.environ.get("MAX_RESULTS_PER_SOURCE", "5"))
-
-# ---------------------------------------------------------------------------
-# Flask app settings
-# ---------------------------------------------------------------------------
-FLASK_HOST = os.environ.get("FLASK_HOST", "127.0.0.1")
-FLASK_PORT = int(os.environ.get("FLASK_PORT", "5000"))
-FLASK_DEBUG = os.environ.get("FLASK_DEBUG", "true").lower() == "true"
-
-
-
-
-
-
-
-
-
-
-
-------------------------------------------------------------------------------------------------------------
-
-
-indexingCode.txt
-
-batched_tree_builder.py
-
-"""
-indexing/batched_tree_builder.py
-
-WHAT THIS FILE DOES
--------------------
-Builds a complete tree index for a large source by:
-
-    records
-        ↓
-    batches
-        ↓
-    local LLM-generated trees
-        ↓
-    tree merge
-        ↓
-    global TreeIndex
-
-WHY IT EXISTS
--------------
-A local 1B model should not receive hundreds of records in one prompt.
-
-TreeBuilder handles ONE manageable group.
-
-BatchedTreeBuilder handles the complete dataset.
-"""
-
-import json
-
-from config.settings import (
-    TREE_INDEX_BATCH_SIZE,
-)
-
-from indexing.record_batcher import RecordBatcher
-from indexing.tree_builder import TreeBuilder
-from indexing.tree_schema import TreeIndex
-from llm.llm_client import LLMClient
-
-
-MERGE_SYSTEM_PROMPT = """
-You are a hierarchical index merging system.
-
-You are given several partial trees describing different batches of
-records from the same data source.
-
-Your task is to merge them into ONE coherent hierarchical index.
-
-Rules:
-
-1. Return ONLY valid JSON.
-2. Do not return markdown.
-3. Do not explain your answer.
-4. Preserve every valid Record ID.
-5. Never invent Record IDs.
-6. Do not generate node IDs.
-7. The application will assign node IDs.
-8. Every node must have a non-empty title.
-9. Merge nodes that represent the same concept.
-10. Do not create duplicate categories when they can be combined.
-11. Prefer a meaningful hierarchy from broad concepts to specific ones.
-12. Records should normally live in specific leaf/category nodes.
-13. Do not put every record directly under the root.
-14. Do not lose records during the merge.
-15. Do not invent information that does not exist in the partial trees.
-
-Required structure:
-
-{
-  "title": "...",
-  "summary": "...",
-  "record_ids": [],
-  "children": []
-}
-"""
-
-
-class BatchedTreeBuilder:
-
-    def __init__(
-        self,
-        indexer: TreeBuilder | None = None,
-        merger: LLMClient | None = None,
-        batch_size: int = TREE_INDEX_BATCH_SIZE,
-    ):
-
-        self.indexer = (
-            indexer
-            or TreeBuilder()
-        )
-
-        self.merger = (
-            merger
-            or LLMClient(role="indexer")
-        )
-
-        self.batcher = RecordBatcher(
-            batch_size=batch_size
-        )
-
-    def build(self, source: str, records: list,) -> TreeIndex:
-
-        records = list(records)
-
-        if not records:
-            raise ValueError(
-                "Cannot build a tree from zero records."
-            )
-
-        initial_batches = self.batcher.batch(
-            records
-        )
-
-        print(
-            f"[BATCH INDEXER] "
-            f"Split {len(records)} records into "
-            f"{len(initial_batches)} initial batches."
-        )
-
-        partial_trees = []
-
-        for index, batch in enumerate(
-            initial_batches,
-            start=1,
-        ):
-
-            print(
-                f"[BATCH INDEXER] "
-                f"Processing initial batch "
-                f"{index}/{len(initial_batches)} "
-                f"({len(batch)} records)"
-            )
-
-            trees = self._build_adaptive_batch(
-                source=source,
-                records=batch,
-            )
-
-            partial_trees.extend(
-                trees
-            )
-
-        print(
-            f"[BATCH INDEXER] "
-            f"Successfully built "
-            f"{len(partial_trees)} partial trees."
-        )
-
-        if len(partial_trees) == 1:
-            return partial_trees[0]
-
-        return self._merge_trees(
-            source=source,
-            partial_trees=partial_trees,
-            all_records=records,
-        )
-
-    def _merge_trees(
-        self,
-        source: str,
-        partial_trees: list[TreeIndex],
-        all_records: list,
-    ) -> TreeIndex:
-
-        trees_text = []
-
-        for index, tree in enumerate(
-            partial_trees,
-            start=1,
-        ):
-
-            trees_text.append(
-                f"PARTIAL TREE {index}:\n"
-                + json.dumps(
-                    tree.to_dict()["root"],
-                    indent=2,
-                    ensure_ascii=False,
-                )
-            )
-
-        user_prompt = f"""
-Merge the following partial trees into one global tree.
-
-SOURCE:
-{source}
-
-PARTIAL TREES:
-
-\n\n{trees_text}
-
-IMPORTANT:
-
-The complete dataset contains these Record IDs:
-
-{
-    [str(record.id) for record in all_records]
-}
-
-The final tree MUST preserve all of these records.
-
-Do not invent IDs.
-
-Do not generate node IDs.
-
-Return ONLY the root tree JSON object.
-"""
-
-        raw_response = self.merger.generate(
-            system_prompt=MERGE_SYSTEM_PROMPT,
-            user_prompt=user_prompt,
-            response_format="json",
-        )
-
-        try:
-
-            root = json.loads(
-                raw_response
-            )
-
-        except json.JSONDecodeError as error:
-
-            raise ValueError(
-                "Tree merger returned invalid JSON."
-            ) from error
-
-        if not isinstance(root, dict):
-
-            raise ValueError(
-                "Tree merger must return "
-                "a JSON object."
-            )
-
-        tree_data = {
-            "version": "1.0",
-            "source": source,
-            "metadata": {
-                "builder": "batched_llm",
-                "model": self.merger.model,
-                "batch_count": len(
-                    partial_trees
-                ),
-            },
-            "root": root,
-        }
-
-        tree_data = (
-            self.indexer._normalize_root(
-                source=source,
-                tree_data=tree_data,
-            )
-        )
-
-        tree_data = (
-            self.indexer._validate_llm_tree(
-                tree_data=tree_data,
-                valid_record_ids={
-                    str(record.id)
-                    for record in all_records
-                },
-            )
-        )
-
-        tree_data = (
-            self.indexer._assign_node_ids(
-                tree_data
-            )
-        )
-
-        tree = TreeIndex.from_dict(
-            tree_data
-        )
-
-        tree.validate(
-            {
-                str(record.id)
-                for record in all_records
-            }
-        )
-
-        return tree
-
-    def _build_adaptive_batch(self, source: str, records: list,) -> list[TreeIndex]:
-        """
-        Try to index a batch.
-
-        If the local LLM cannot successfully process the batch, split it
-        into smaller batches and try again.
-
-        This is recursive so the system can automatically find a workable
-        batch size for different record shapes.
-        """
-
-        try:
-
-            tree = self.indexer.build(
-                source=source,
-                records=records,
-            )
-
-            return [tree]
-
-        except (
-            RuntimeError,
-            ValueError,
-            TypeError,
-        ) as error:
-
-            print(
-                f"[BATCH INDEXER] "
-                f"Batch of {len(records)} records failed:"
-            )
-
-            print(
-                f"[BATCH INDEXER] {error}"
-            )
-
-            if len(records) <= 1:
-
-                raise RuntimeError(
-                    "A single record could not be indexed "
-                    f"for source '{source}'."
-                ) from error
-
-            midpoint = len(records) // 2
-
-            left = records[:midpoint]
-            right = records[midpoint:]
-
-            print(
-                f"[BATCH INDEXER] "
-                f"Splitting {len(records)} records "
-                f"into {len(left)} + {len(right)}"
-            )
-
-            left_trees = self._build_adaptive_batch(
-                source=source,
-                records=left,
-            )
-
-            right_trees = self._build_adaptive_batch(
-                source=source,
-                records=right,
-            )
-
-            return (
-                left_trees
-                + right_trees
-            )
-
-
---------------------------------------------------------------------------------------------
-build_index.py
-
-"""
-Command-line entry point for building persistent tree indexes.
-
-Examples:
-
-    python -m indexing.build_index campaigns
-    python -m indexing.build_index offers
-    python -m indexing.build_index cards
-"""
-
-import sys
-
-from indexing.tree_storage import TreeStorage
-from indexing.pageindex_tree_builder import (
-    PageIndexTreeBuilder,
-)
-
+from retrievers.base_retriever import KeywordRetriever
 from loaders.campaigns_loader import CampaignsLoader
-from loaders.offers_loader import OffersLoader
+
+
+class CampaignsRetriever(KeywordRetriever):
+    def __init__(self):
+        super().__init__(loader=CampaignsLoader())
+
+
+-------------------------------------------------------------------------------------------------
+cards_retriever.py
+
+"""
+retrievers/cards_retriever.py
+
+WHAT THIS FILE DOES
+--------------------
+The keyword retriever for the "cards" source. All the real logic
+lives in KeywordRetriever (see base_retriever.py) -- this file just
+tells it to load its data from CardsLoader.
+
+INPUTS  : query (str) -- the user's question or a sub-query from the router
+OUTPUTS : list[Record] -- the most relevant card records, best first
+"""
+
+from retrievers.base_retriever import KeywordRetriever
 from loaders.cards_loader import CardsLoader
 
 
-LOADERS = {
-    "campaigns": CampaignsLoader,
-    "offers": OffersLoader,
-    "cards": CardsLoader,
+class CardsRetriever(KeywordRetriever):
+    def __init__(self):
+        super().__init__(loader=CardsLoader())
+
+-------------------------------------------------------------------------------------------------
+keyword_scoring.py
+
+"""
+retrievers/keyword_scoring.py
+
+WHAT THIS FILE DOES
+--------------------
+A small, dependency-free scoring function: given a user query and a
+Record's search_text, returns a relevance score (higher = more
+relevant). This is Phase 1's ENTIRE retrieval "algorithm" -- no
+embeddings, no vector database, just counting overlapping words.
+
+WHY IT EXISTS AS ITS OWN FILE
+------------------------------
+Every source-specific retriever (cards, offers, campaigns) needs the
+SAME scoring logic -- only the data differs. Putting it here once
+means:
+  1. All retrievers score consistently.
+  2. If you later want to upgrade Phase 1's matching (e.g. add fuzzy
+     matching, or handle Arabic stemming), you change ONE function
+     and every retriever benefits immediately.
+
+HOW IT WORKS (intentionally simple, on purpose)
+------------------------------------------------
+1. Lowercase and split the query into individual words ("tokens").
+2. For each Record, count how many of those query words appear
+   anywhere in its search_text.
+3. That count IS the score. Records with score 0 are considered
+   irrelevant and dropped.
+
+This is a bag-of-words / keyword-overlap approach -- the simplest
+possible form of "search" without any ML. It's intentionally naive:
+Phase 1's goal is to prove the end-to-end loop works, not to have
+great retrieval quality yet. Phase 2's re-ranker and dynamic router
+will make this smarter.
+
+INPUTS  : query (str), a Record's search_text (str)
+OUTPUTS : an integer score
+"""
+
+import re
+
+# Very short, common English words add noise to keyword matching
+# (e.g. matching on "the", "is", "a" would make almost every record
+# score > 0). We filter these out before scoring.
+STOPWORDS = {
+    "the", "a", "an", "is", "are", "was", "were", "what", "which",
+    "who", "whom", "this", "that", "of", "for", "on", "in", "to",
+    "do", "does", "can", "i", "me", "my", "you", "your", "it", "its",
+    "and", "or", "with", "about", "have", "has", "there", "any",
 }
 
 
-def main():
-
-    if len(sys.argv) != 2:
-
-        print(
-            "Usage:\n"
-            "  python -m indexing.build_index campaigns\n"
-            "  python -m indexing.build_index offers\n"
-            "  python -m indexing.build_index cards"
-        )
-
-        raise SystemExit(1)
-
-    source = sys.argv[1].lower()
-
-    if source not in LOADERS:
-
-        print(
-            f"Unknown source '{source}'.\n"
-            f"Available sources: "
-            f"{', '.join(LOADERS.keys())}"
-        )
-
-        raise SystemExit(1)
-
-    loader_class = LOADERS[source]
-
-    print("=" * 60)
-    print("TREE INDEX BUILD")
-    print("=" * 60)
-    print(f"Source: {source}")
-    print()
-
-    loader = loader_class()
-
-    print("Loading records...")
-
-    records = loader.load()
-
-    print(
-        f"Loaded {len(records)} records."
-    )
-
-    print()
-    print("Building tree with PageIndex...")
-
-    builder = PageIndexTreeBuilder()
-
-    tree = builder.build(
-        source=source,
-        records=records,
-    )
-
-    print(
-        f"Generated {len(tree.get_all_nodes())} tree nodes."
-    )
-
-    print(
-        f"Referenced {len(tree.get_record_ids())} records."
-    )
-
-    print()
-    print("Saving tree index...")
-
-    storage = TreeStorage()
-
-    path = storage.save(tree)
-
-    print(f"Saved: {path}")
-
-    print()
-    print("=" * 60)
-    print("TREE INDEX BUILD COMPLETE")
-    print("=" * 60)
+def tokenize(text: str) -> list[str]:
+    """Lowercase and split into word tokens, dropping punctuation and stopwords."""
+    words = re.findall(r"[a-zA-Z0-9%]+", text.lower())
+    return [w for w in words if w not in STOPWORDS]
 
 
-if __name__ == "__main__":
-    main()
+def score(query: str, search_text: str) -> int:
+    """
+    Return the number of query tokens that appear in search_text.
+    A score of 0 means "no overlap -- not relevant".
+    """
+    query_tokens = set(tokenize(query))
+    if not query_tokens:
+        return 0
+    matches = sum(1 for token in query_tokens if token in search_text)
+    return matches
 
---------------------------------------------------------------------------------------------
-pageindex_tree_builder.py
+-------------------------------------------------------------------------------------------------
+offers_retriever.py
 
 """
-indexing/pageindex_tree_builder.py
+retrievers/offers_retriever.py
 
 WHAT THIS FILE DOES
--------------------
-Builds a TreeIndex using the PageIndex library instead of asking a local
-LLM to emit the whole hierarchy as JSON:
+--------------------
+The keyword retriever for the "offers" source (installment plans +
+discounts). All the real logic lives in KeywordRetriever (see
+base_retriever.py) -- this file just tells it to load its data from
+OffersLoader.
 
-    records
-        |
-        v
-    RecordCategorizer      (LLM: one short category per record)
-        |
-        v
-    record_markdown        (headings: source / category / record)
-        |
-        v
-    pageindex.md_to_tree   (headings -> tree, + optional node summaries)
-        |
-        v
-    TreeIndex              (our existing schema, unchanged)
-
-WHY IT EXISTS
--------------
-It is a drop-in replacement for BatchedTreeBuilder: same build(source,
-records) signature, same validated TreeIndex out. Everything downstream
--- TreeStorage, TreeRetriever, RagPipeline -- is untouched, because the
-conversion at the end of this file lands on the existing schema.
-
-WHAT CHANGED IN BEHAVIOUR
--------------------------
-The hierarchy is now deterministic. PageIndex derives it from markdown
-heading depth, so the two rules the old 1B indexer kept breaking --
-"category nodes must have empty record_ids" and "attach records to the
-most specific leaf" -- are now structurally impossible to violate.
-Batching, adaptive splitting and tree merging are all gone with it: the
-document is processed whole.
-
-The LLM is still used, in two narrower places: choosing each record's
-category, and (optionally) summarizing each node.
-
-INPUTS  : source (str), list[Record]
-OUTPUTS : a validated TreeIndex
-
-REQUIRES: pip install pageindex; Ollama running locally.
+INPUTS  : query (str)
+OUTPUTS : list[Record] -- the most relevant offer records, best first
 """
 
-import asyncio
-import os
-import re
+from retrievers.base_retriever import KeywordRetriever
+from loaders.offers_loader import OffersLoader
 
-from config.settings import (
-    MARKDOWN_DIR,
-    OLLAMA_BASE_URL,
-    PAGEINDEX_ADD_NODE_SUMMARY,
-    PAGEINDEX_SUMMARY_MODEL,
-    PAGEINDEX_SUMMARY_TOKEN_THRESHOLD,
-    PAGEINDEX_MAX_SUMMARY_CHARS,
-)
 
-from indexing.record_categorizer import RecordCategorizer
-from indexing.record_markdown import write_markdown
-from indexing.tree_schema import TreeIndex
+class OffersRetriever(KeywordRetriever):
+    def __init__(self):
+        super().__init__(loader=OffersLoader())
 
 
-# "Some Card Name [card_1234]" -> ("Some Card Name", "card_1234").
-# Greedy, so it binds to the LAST bracketed group: record IDs built from
-# merchant names may themselves contain a bracket.
-_RECORD_ID_IN_TITLE = re.compile(r"^(.*)\[(.+)\]\s*$")
-
-
-class PageIndexTreeBuilder:
-
-    def __init__(
-        self,
-        categorizer: RecordCategorizer | None = None,
-        add_node_summary: str = PAGEINDEX_ADD_NODE_SUMMARY,
-        summary_model: str = PAGEINDEX_SUMMARY_MODEL,
-        summary_token_threshold: int = PAGEINDEX_SUMMARY_TOKEN_THRESHOLD,
-        markdown_dir=MARKDOWN_DIR,
-        max_summary_chars: int = PAGEINDEX_MAX_SUMMARY_CHARS,
-    ):
-        self.categorizer = (
-            categorizer
-            or RecordCategorizer()
-        )
-
-        self.add_node_summary = add_node_summary
-        self.summary_model = summary_model
-        self.summary_token_threshold = summary_token_threshold
-        self.markdown_dir = markdown_dir
-        self.max_summary_chars = max_summary_chars
-
-    def build(self, source: str, records: list) -> TreeIndex:
-
-        records = list(records)
-
-        if not records:
-            raise ValueError(
-                "Cannot build a tree from zero records."
-            )
-
-        valid_record_ids = {
-            str(record.id)
-            for record in records
-        }
-
-        print(
-            f"[PAGEINDEX] Categorizing {len(records)} records..."
-        )
-
-        categories = self.categorizer.categorize(records)
-
-        markdown_path = write_markdown(
-            source=source,
-            records=records,
-            categories=categories,
-            markdown_dir=self.markdown_dir,
-        )
-
-        print(
-            f"[PAGEINDEX] Wrote markdown: {markdown_path}"
-        )
-
-        result = self._run_md_to_tree(markdown_path)
-
-        structure = result.get("structure") or []
-
-        if not structure:
-            raise ValueError(
-                "PageIndex returned an empty structure for "
-                f"source '{source}'."
-            )
-
-        root = self._build_root(
-            source=source,
-            structure=structure,
-            valid_record_ids=valid_record_ids,
-        )
-
-        tree_data = {
-            "version": "1.0",
-            "source": source,
-            "metadata": {
-                "builder": "pageindex",
-                "doc_name": result.get("doc_name", source),
-                "line_count": result.get("line_count"),
-                "markdown_path": str(markdown_path),
-                "node_summaries": self.add_node_summary,
-                "summary_model": (
-                    self.summary_model
-                    if self.add_node_summary == "yes"
-                    else None
-                ),
-            },
-            "root": root,
-        }
-
-        tree = TreeIndex.from_dict(tree_data)
-
-        tree.validate(valid_record_ids)
-
-        self._warn_about_missing_records(
-            tree=tree,
-            valid_record_ids=valid_record_ids,
-        )
-
-        return tree
-
-    def _run_md_to_tree(self, markdown_path) -> dict:
-        """
-        Call PageIndex. Imported lazily so the rest of the project still
-        works if the library is not installed.
-        """
-
-        try:
-            from pageindex import md_to_tree
-
-        except ImportError as error:
-            raise RuntimeError(
-                "PageIndex is not installed. "
-                "Run: pip install pageindex"
-            ) from error
-
-        if self.add_node_summary == "yes":
-
-            # PageIndex routes summaries through LiteLLM, which reads the
-            # Ollama host from this variable rather than our settings.
-            os.environ.setdefault(
-                "OLLAMA_API_BASE",
-                OLLAMA_BASE_URL,
-            )
-
-            print(
-                f"[PAGEINDEX] Generating node summaries with "
-                f"{self.summary_model}..."
-            )
-
-        return asyncio.run(
-            md_to_tree(
-                str(markdown_path),
-                if_add_node_summary=self.add_node_summary,
-                summary_token_threshold=self.summary_token_threshold,
-                model=self.summary_model,
-                if_add_node_text="no",
-                if_add_node_id="yes",
-            )
-        )
-
-    def _build_root(
-        self,
-        source: str,
-        structure: list,
-        valid_record_ids: set,
-    ) -> dict:
-        """
-        PageIndex returns a FOREST (a list of top-level headings), but
-        TreeIndex requires a single root.
-
-        record_markdown emits exactly one '#' heading, so there is
-        normally one entry -- but a synthetic root is used otherwise so
-        the conversion never depends on that.
-        """
-
-        converted = [
-            self._convert_node(node, valid_record_ids)
-            for node in structure
-        ]
-
-        if len(converted) == 1:
-            return converted[0]
-
-        return {
-            "node_id": "node_root",
-            "title": source.replace("_", " ").title(),
-            "summary": f"All indexed records for {source}.",
-            "record_ids": [],
-            "children": converted,
-        }
-
-    def _convert_node(
-        self,
-        node: dict,
-        valid_record_ids: set,
-    ) -> dict:
-        """
-        Convert one PageIndex node into our TreeNode dict shape.
-
-        PageIndex node: {title, node_id, line_num, summary?,
-                         prefix_summary?, nodes?}
-        Our node:       {node_id, title, summary, record_ids, children}
-        """
-
-        title = str(node.get("title", "")).strip()
-
-        record_ids = []
-
-        match = _RECORD_ID_IN_TITLE.match(title)
-
-        if match:
-
-            candidate_title = match.group(1).strip()
-            candidate_id = match.group(2).strip()
-
-            if candidate_id in valid_record_ids:
-
-                record_ids = [candidate_id]
-
-                title = candidate_title or candidate_id
-
-            else:
-                # Not one of ours -- a category that happened to end in
-                # brackets. Leave the title exactly as written.
-                print(
-                    f"[PAGEINDEX] Ignoring unknown record ID "
-                    f"'{candidate_id}' in heading."
-                )
-
-        # Leaves get 'summary'; nodes with children get 'prefix_summary'.
-        summary = (
-            node.get("summary")
-            or node.get("prefix_summary")
-            or ""
-        )
-
-        summary = str(summary).replace("\n", " ").strip()
-
-        if len(summary) > self.max_summary_chars:
-            summary = summary[: self.max_summary_chars].rstrip() + "..."
-
-        children = [
-            self._convert_node(child, valid_record_ids)
-            for child in (node.get("nodes") or [])
-        ]
-
-        return {
-            "node_id": f"node_{node.get('node_id', '')}",
-            "title": title or "Untitled",
-            "summary": summary,
-            "record_ids": record_ids,
-            "children": children,
-        }
-
-    @staticmethod
-    def _warn_about_missing_records(
-        tree: TreeIndex,
-        valid_record_ids: set,
-    ) -> None:
-        """
-        tree.validate() rejects INVENTED record IDs. This catches the
-        opposite failure: records that silently never made it in.
-        """
-
-        indexed = set(tree.get_record_ids())
-
-        missing = valid_record_ids - indexed
-
-        if missing:
-            print(
-                f"[PAGEINDEX] WARNING: {len(missing)} record(s) "
-                f"are not referenced by any node: "
-                f"{', '.join(sorted(missing))}"
-            )
-
-
---------------------------------------------------------------------------------------------
-record_batcher.py
-
-"""
-indexing/record_batcher.py
-
-WHAT THIS FILE DOES
--------------------
-Splits a collection of Records into smaller batches before they are
-sent to the indexing LLM.
-
-WHY IT EXISTS
--------------
-A local LLM should not be forced to understand hundreds of records
-in a single prompt.
-
-The batcher keeps the indexing module independent from the LLM itself.
-
-INPUT:
-    list[Record]
-
-OUTPUT:
-    list[list[Record]]
-
-Example:
-
-    23 records
-        ↓
-    batch size = 10
-        ↓
-    [
-        [record 1 ... record 10],
-        [record 11 ... record 20],
-        [record 21 ... record 23]
-    ]
-"""
-
-from typing import Iterable
-
-
-class RecordBatcher:
-
-    def __init__(self, batch_size: int = 10):
-
-        if batch_size <= 0:
-            raise ValueError(
-                "batch_size must be greater than zero."
-            )
-
-        self.batch_size = batch_size
-
-    def batch(
-        self,
-        records: Iterable,
-    ) -> list[list]:
-
-        records = list(records)
-
-        return [
-            records[start:start + self.batch_size]
-            for start in range(
-                0,
-                len(records),
-                self.batch_size,
-            )
-        ]
-
---------------------------------------------------------------------------------------------
-record_categorizer.py
-
-
-"""
-indexing/record_categorizer.py
-
-WHAT THIS FILE DOES
--------------------
-Asks the local indexing LLM to assign ONE short category label to each
-Record, e.g.
-
-    campaign_merchant_egypt_air_2026_07  ->  "Travel And Airlines"
-    campaign_merchant_el_araby_2026_07   ->  "Home Appliances"
-
-WHY IT EXISTS
--------------
-PageIndex builds its tree from markdown heading levels, deterministically.
-It does NOT reason about how records should be grouped -- whatever
-headings we emit ARE the tree, one for one.
-
-So the semantic grouping that the old TreeBuilder asked the indexer LLM
-to invent now happens here instead, one record at a time. A per-record
-question ("what is this?") is a much easier task for a 1B model than
-"design a whole hierarchy and emit valid nested JSON", which is what the
-old indexer prompt asked for.
-
-The category labels produced here become the '##' headings in
-record_markdown.py, which become the middle layer of the PageIndex tree.
-
-INPUTS  : list[Record]
-OUTPUTS : dict mapping record.id -> category label (str)
-
-REQUIRES: Ollama running locally with the indexer model pulled.
-"""
-
-import json
-import re
-
-from llm.llm_client import LLMClient
-
-
-CATEGORY_SYSTEM_PROMPT = """
-You are a record classification system for a retail bank.
-
-You are given ONE record. Assign it a single short category label.
-
-Rules:
-
-1. Return ONLY valid JSON.
-2. Do not return markdown.
-3. Do not explain your answer.
-4. The label must be 1 to 3 words.
-5. The label must describe what the record IS about, not its ID.
-6. Reuse an existing category if one of them fits the record.
-7. Only invent a new category when no existing category fits.
-8. Do not put the record's own name in the label.
-
-Required output:
-
-{"category": "Travel And Airlines"}
-"""
-
-# A category label is a markdown heading, so keep it to plain text.
-_UNSAFE_LABEL_CHARS = re.compile(r"[\[\]#*`_\r\n]")
-
-# Metadata values can be enormous (the cards sheet has ~366 columns).
-# The classifier only needs a flavour of the record, not all of it.
-MAX_METADATA_FIELDS = 12
-MAX_VALUE_LENGTH = 120
-
-
-class RecordCategorizer:
-
-    def __init__(
-        self,
-        llm_client: LLMClient | None = None,
-        fallback_category: str = "Other",
-    ):
-        self.llm_client = (
-            llm_client
-            or LLMClient(role="indexer")
-        )
-
-        self.fallback_category = fallback_category
-
-    def categorize(self, records: list) -> dict:
-        """
-        Return {record_id: category_label} for every supplied record.
-
-        Categories already assigned are fed back into the prompt so the
-        model converges on a small, reusable set of labels instead of
-        inventing a brand new one for every single record.
-        """
-
-        categories = {}
-        known_labels = []
-
-        for index, record in enumerate(records, start=1):
-
-            label = self._categorize_one(
-                record=record,
-                known_labels=known_labels,
-            )
-
-            print(
-                f"[CATEGORIZER] "
-                f"{index}/{len(records)} "
-                f"{record.id} -> {label}"
-            )
-
-            categories[str(record.id)] = label
-
-            if label not in known_labels:
-                known_labels.append(label)
-
-        return categories
-
-    def _categorize_one(
-        self,
-        record,
-        known_labels: list[str],
-    ) -> str:
-
-        user_prompt = self._build_user_prompt(
-            record=record,
-            known_labels=known_labels,
-        )
-
-        try:
-
-            raw_response = self.llm_client.generate(
-                system_prompt=CATEGORY_SYSTEM_PROMPT,
-                user_prompt=user_prompt,
-                response_format="json",
-            )
-
-            data = json.loads(raw_response)
-
-            label = data.get("category", "")
-
-        except (RuntimeError, ValueError, TypeError, AttributeError) as error:
-
-            # One flaky classification must not kill a whole index build.
-            # The record still ends up in the tree, just under "Other".
-            print(
-                f"[CATEGORIZER] "
-                f"Falling back for {record.id}: {error}"
-            )
-
-            return self.fallback_category
-
-        return self._normalize_label(
-            label=label,
-            known_labels=known_labels,
-        )
-
-    def _build_user_prompt(
-        self,
-        record,
-        known_labels: list[str],
-    ) -> str:
-
-        if known_labels:
-            existing = "\n".join(
-                f"- {label}"
-                for label in known_labels
-            )
-        else:
-            existing = "(none yet -- you are classifying the first record)"
-
-        return f"""
-Classify this record.
-
-EXISTING CATEGORIES (reuse one of these if it fits):
-{existing}
-
-RECORD:
-Title: {record.title}
-Source: {record.source}
-{self._summarize_metadata(record)}
-
-Return ONLY:
-
-{{"category": "..."}}
-"""
-
-    @staticmethod
-    def _summarize_metadata(record) -> str:
-
-        if not record.metadata:
-            return ""
-
-        lines = []
-
-        for key, value in record.metadata.items():
-
-            if value is None or value == "":
-                continue
-
-            text = str(value).replace("\n", " ").strip()
-
-            if len(text) > MAX_VALUE_LENGTH:
-                text = text[:MAX_VALUE_LENGTH] + "..."
-
-            lines.append(f"{key}: {text}")
-
-            if len(lines) >= MAX_METADATA_FIELDS:
-                break
-
-        if not lines:
-            return ""
-
-        return "Details:\n" + "\n".join(lines)
-
-    def _normalize_label(
-        self,
-        label,
-        known_labels: list[str],
-    ) -> str:
-        """
-        Turn whatever the model said into a safe, stable heading label.
-
-        Matching case-insensitively against labels we have already used
-        stops "Travel", "travel" and "TRAVEL" from becoming three
-        separate branches of the tree.
-        """
-
-        if not isinstance(label, str):
-            return self.fallback_category
-
-        label = _UNSAFE_LABEL_CHARS.sub(" ", label)
-        label = re.sub(r"\s+", " ", label).strip()
-
-        if not label:
-            return self.fallback_category
-
-        # Keep labels short enough to read as a heading.
-        words = label.split(" ")
-
-        if len(words) > 4:
-            label = " ".join(words[:4])
-
-        label = label.title()
-
-        for existing in known_labels:
-            if existing.lower() == label.lower():
-                return existing
-
-        return label
-
---------------------------------------------------------------------------------------------
-record_markdown.py
-
-"""
-indexing/record_markdown.py
-
-WHAT THIS FILE DOES
--------------------
-Renders a list of Records as ONE markdown document that PageIndex can
-index:
-
-    # Campaigns                                     <- source
-    ## Travel And Airlines                          <- LLM-assigned category
-    ### Egypt Air July 2026 [campaign_egypt_air]    <- one record
-    Campaign: Egypt Air ...                         <- display_text
-    ## Home Appliances
-    ### El Araby Installment [campaign_el_araby]
-    ...
-
-WHY IT EXISTS
--------------
-PageIndex's md_to_tree() builds its hierarchy purely from markdown
-heading depth -- '#' becomes a root, '##' its child, '###' its child.
-There is no LLM reasoning about structure. So this file IS the tree
-design: heading level 1 = source, level 2 = category, level 3 = record.
-
-WHY THE RECORD ID IS IN THE HEADING
------------------------------------
-PageIndex nodes have no concept of a Record. They carry a title, a
-node_id and some text -- nothing that points back at our data. But
-TreeRetriever resolves answers through node.record_ids, so the link has
-to survive the round trip through markdown.
-
-Putting the ID in the heading as "[record_id]" solves that: it stays
-human-readable for the traversal LLM, and pageindex_tree_builder.py can
-parse it straight back off the title. No other mechanism in PageIndex
-preserves an application identifier.
-
-INPUTS  : source (str), list[Record], {record_id: category}
-OUTPUTS : a markdown string / a written .md file path
-"""
-
-import re
-from pathlib import Path
-
-from config.settings import MARKDOWN_DIR
-
-
-# Level 1 heading per source. Falls back to the raw source name.
-SOURCE_TITLES = {
-    "cards": "Credit Card Products",
-    "offers": "Merchant Offers",
-    "campaigns": "Campaigns",
 }
 
-UNCATEGORIZED = "Other"
-
-# PageIndex treats these as headings, so a record's body text must never
-# be allowed to look like one -- otherwise a fee description starting
-# with '#' would silently become a node in the tree.
-_HEADING_LINE = re.compile(r"^#{1,6}\s+\S")
-_BOLD_HEADING_LINE = re.compile(r"^\*\*(.+?)\*\*\s*$")
-_CODE_FENCE_LINE = re.compile(r"^```")
-
-
-def build_markdown(
-    source: str,
-    records: list,
-    categories: dict,
-) -> str:
-    """
-    Render records as markdown, grouped under their category headings.
-    """
-
-    if not records:
-        raise ValueError(
-            f"Cannot build markdown for '{source}': no records."
-        )
-
-    source_title = SOURCE_TITLES.get(
-        source,
-        source.replace("_", " ").title(),
-    )
-
-    grouped: dict[str, list] = {}
-
-    for record in records:
-
-        category = categories.get(
-            str(record.id),
-            UNCATEGORIZED,
-        ) or UNCATEGORIZED
-
-        grouped.setdefault(category, []).append(record)
-
-    lines = [
-        f"# {source_title}",
-        "",
-    ]
-
-    for category, category_records in grouped.items():
-
-        lines.append(f"## {_escape_heading(category)}")
-        lines.append("")
-
-        for record in category_records:
-
-            lines.append(
-                f"### {_escape_heading(record.title)} "
-                f"[{record.id}]"
-            )
-
-            lines.append("")
-
-            lines.append(
-                _escape_body(record.display_text)
-            )
-
-            lines.append("")
-
-    return "\n".join(lines).rstrip() + "\n"
-
-
-def write_markdown(
-    source: str,
-    records: list,
-    categories: dict,
-    markdown_dir: Path = MARKDOWN_DIR,
-) -> Path:
-    """
-    Render and save to <markdown_dir>/<source>.md, returning the path.
-
-    md_to_tree() reads from a path, not a string, so the file is a
-    required intermediate -- it is also the easiest way to eyeball what
-    PageIndex actually saw when a tree looks wrong.
-    """
-
-    markdown_dir = Path(markdown_dir)
-
-    markdown_dir.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
-
-    path = markdown_dir / f"{source}.md"
-
-    text = build_markdown(
-        source=source,
-        records=records,
-        categories=categories,
-    )
-
-    with path.open("w", encoding="utf-8") as file:
-        file.write(text)
-
-    return path
-
-
-def _escape_heading(text) -> str:
-    """
-    Flatten a title into something safe to sit on a heading line.
-
-    Square brackets are stripped because the record ID is appended in
-    brackets and the parser reads the LAST bracketed group.
-    """
-
-    text = str(text or "").replace("\n", " ")
-
-    text = text.replace("[", "(").replace("]", ")")
-
-    text = re.sub(r"\s+", " ", text).strip()
-
-    text = text.lstrip("#").strip()
-
-    return text or "Untitled"
-
-
-def _escape_body(text) -> str:
-    """
-    Neutralize any line of record text that PageIndex would mistake for
-    a heading or a code fence.
-
-    A leading backslash stops the regex matching while staying readable
-    to the traversal and generator LLMs.
-    """
-
-    escaped_lines = []
-
-    for line in str(text or "").split("\n"):
-
-        stripped = line.strip()
-
-        if (
-            _HEADING_LINE.match(stripped)
-            or _BOLD_HEADING_LINE.match(stripped)
-            or _CODE_FENCE_LINE.match(stripped)
-        ):
-            escaped_lines.append("\\" + line.lstrip())
-
-        else:
-            escaped_lines.append(line)
-
-    return "\n".join(escaped_lines).strip()
-
-
---------------------------------------------------------------------------------------------
-tree_builder.py
-
-"""
-LLM-powered hierarchical tree index builder.
-"""
-
-import json
-from typing import Iterable
-
-from config.settings import (
-    TREE_INDEX_MAX_RETRIES,
-)
-
-from indexing.tree_schema import TreeIndex
-from indexing.tree_prompt import (
-    TREE_INDEX_SYSTEM_PROMPT,
-    build_tree_user_prompt,
-)
-from llm.llm_client import LLMClient
-
-class TreeBuilder:
-
-    def __init__(
-        self,
-        llm_client: LLMClient | None = None,
-    ):
-        self.llm_client = (
-            llm_client
-            or LLMClient(role="indexer")
-        )
-
-    def build(self, source: str,records: Iterable,) -> TreeIndex:
-        """
-        Build a validated TreeIndex from records using the indexing LLM.
-
-        The LLM is responsible for semantic organization.
-
-        Python is responsible for:
-            - JSON parsing
-            - structural validation
-            - node ID assignment
-            - record ID validation
-        """
-
-        records = list(records)
-
-        if not records:
-            raise ValueError(
-                f"Cannot build tree for '{source}': "
-                "no records were provided."
-            )
-
-        records_text = self._build_records_text(
-            records
-        )
-
-        user_prompt = build_tree_user_prompt(
-            source=source,
-            records_text=records_text,
-        )
-
-        valid_record_ids = {
-            str(record.id)
-            for record in records
-        }
-
-        last_error = None
-
-        for attempt in range(
-            TREE_INDEX_MAX_RETRIES + 1
-        ):
-
-            print(
-                f"[TREE INDEXER] "
-                f"Attempt {attempt + 1}/"
-                f"{TREE_INDEX_MAX_RETRIES + 1}"
-            )
-
-            try:
-
-                raw_response = self.llm_client.generate(
-                    system_prompt=TREE_INDEX_SYSTEM_PROMPT,
-                    user_prompt=user_prompt,
-                    response_format="json",
-                )
-
-                tree_data = self._parse_json(
-                    raw_response
-                )
-
-                tree_data = self._normalize_root(
-                    source=source,
-                    tree_data=tree_data,
-                )
-                tree_data = (
-                    self._remove_redundant_parent_records(
-                        tree_data
-                    )
-                )
-
-                self._validate_llm_tree(
-                    tree_data=tree_data,
-                    valid_record_ids=valid_record_ids,
-                )
-
-                tree_data = self._assign_node_ids(
-                    tree_data
-                )
-
-                tree = TreeIndex.from_dict(
-                    tree_data
-                )
-
-                tree.validate(
-                    valid_record_ids
-                )
-
-                return tree
-
-            except (
-                ValueError,
-                TypeError,
-                KeyError,
-                json.JSONDecodeError,
-            ) as error:
-
-                last_error = error
-
-                print(
-                    "[TREE INDEXER] "
-                    f"Invalid output: {error}"
-                )
-
-                if attempt < TREE_INDEX_MAX_RETRIES:
-
-                    print(
-                        "[TREE INDEXER] "
-                        "Retrying..."
-                    )
-
-                    user_prompt = (
-                        build_tree_user_prompt(
-                            source=source,
-                            records_text=records_text,
-                        )
-                        + "\n\n"
-                        + "IMPORTANT: Your previous output "
-                        "was invalid.\n"
-                        + f"Validation error: {error}\n"
-                        + "Return a corrected JSON object."
-                    )
-
-        raise RuntimeError(
-            f"Tree indexing failed for source "
-            f"'{source}' after "
-            f"{TREE_INDEX_MAX_RETRIES + 1} attempts. "
-            f"Last error: {last_error}"
-        )
-
-    def _build_records_text(
-        self,
-        records: list,
-    ) -> str:
-
-        lines = []
-
-        for record in records:
-
-            lines.append(
-                f"Record ID: {record.id}"
-            )
-
-            lines.append(
-                f"Title: {record.title}"
-            )
-
-            lines.append(
-                f"Source: {record.source}"
-            )
-
-            if record.metadata:
-
-                metadata_items = []
-
-                for key, value in record.metadata.items():
-
-                    if value is None:
-                        continue
-
-                    metadata_items.append(
-                        f"{key}={value}"
-                    )
-
-                if metadata_items:
-                    lines.append(
-                        "Metadata: "
-                        + " | ".join(metadata_items)
-                    )
-
-            lines.append("---")
-
-        return "\n".join(lines)
-
-    def _normalize_root(
-        self,
-        source: str,
-        tree_data: dict,
-    ) -> dict:
-
-        if not isinstance(tree_data, dict):
-            raise ValueError(
-                "Indexing LLM response must be a JSON object."
-            )
-
-        return {
-            "version": "1.0",
-            "source": source,
-            "metadata": {
-                "builder": "llm",
-                "model": self.llm_client.model,
-                "role": self.llm_client.role,
-            },
-            "root": tree_data,
-        }
-
-    def _assign_node_ids(
-            
-        self,
-        tree_data: dict,
-    ) -> dict:
-        """
-        Assign stable application-generated IDs to every node.
-
-        The LLM is responsible for the hierarchy and node meaning.
-        The application is responsible for node identity.
-
-        This prevents malformed or missing LLM-generated node IDs
-        from breaking the index.
-        """
-
-        counter = 0
-
-        def visit(node: dict, path: str):
-
-            nonlocal counter
-
-            if not isinstance(node, dict):
-                raise ValueError(
-                    "Every tree node must be a JSON object."
-                )
-
-            counter += 1
-
-            node["node_id"] = (
-                f"node_{counter:04d}"
-            )
-
-            children = node.get(
-                "children",
-                [],
-            )
-
-            if children is None:
-                children = []
-
-            if not isinstance(children, list):
-                raise ValueError(
-                    f"Tree node '{node.get('title', 'unknown')}' "
-                    "has invalid 'children'. "
-                    "Expected a list."
-                )
-
-            node["children"] = children
-
-            for index, child in enumerate(children):
-
-                visit(
-                    child,
-                    f"{path}.{index}",
-                )
-
-        root = tree_data.get("root")
-
-        if not isinstance(root, dict):
-            raise ValueError(
-                "Tree index must contain a valid root node."
-            )
-
-        visit(
-            root,
-            "root",
-        )
-
-        return tree_data
-
-
-    def _parse_json(self, raw_response: str,) -> dict:
-        """
-        Parse the raw LLM response as JSON.
-        """
-
-        if not raw_response.strip():
-            raise ValueError(
-                "Indexer returned an empty response."
-            )
-
-        data = json.loads(
-            raw_response
-        )
-
-        if not isinstance(data, dict):
-            raise ValueError(
-                "Indexer JSON root must be an object."
-            )
-
-        return data
-
-    def _validate_llm_tree(self, tree_data: dict, valid_record_ids: set[str],) -> None:
-        """
-        Validate the LLM-generated tree BEFORE assigning application
-        node IDs.
-
-        This checks semantic structure rather than application IDs.
-        """
-
-        root = tree_data.get("root")
-
-        if not isinstance(root, dict):
-            raise ValueError(
-                "Tree must contain a root object."
-            )
-
-        def visit(node: dict):
-
-            if not isinstance(node, dict):
-                raise ValueError(
-                    "Every tree node must be an object."
-                )
-
-            title = node.get("title")
-
-            if not isinstance(title, str):
-                raise ValueError(
-                    "Every tree node must have a title."
-                )
-
-            if not title.strip():
-                raise ValueError(
-                    "Every tree node must have a non-empty title."
-                )
-
-            summary = node.get(
-                "summary",
-                "",
-            )
-
-            if not isinstance(summary, str):
-                raise ValueError(
-                    f"Node '{title}' has invalid summary."
-                )
-
-            record_ids = node.get(
-                "record_ids",
-                [],
-            )
-
-            if not isinstance(record_ids, list):
-                raise ValueError(
-                    f"Node '{title}' must have "
-                    "record_ids as a list."
-                )
-
-            for record_id in record_ids:
-
-                if not isinstance(
-                    record_id,
-                    str,
-                ):
-                    raise ValueError(
-                        f"Node '{title}' contains "
-                        "a non-string record ID."
-                    )
-
-                if record_id not in valid_record_ids:
-
-                    raise ValueError(
-                        f"Node '{title}' references "
-                        f"unknown record ID "
-                        f"'{record_id}'."
-                    )
-
-            children = node.get(
-                "children",
-                [],
-            )
-
-            if not isinstance(
-                children,
-                list,
-            ):
-                raise ValueError(
-                    f"Node '{title}' must have "
-                    "children as a list."
-                )
-
-            for child in children:
-                visit(child)
-
-        visit(root)
-
-    def _remove_redundant_parent_records(    self,    tree_data: dict,) -> dict:
-        """
-        Remove record IDs from parent nodes when the same records are
-        already represented by descendant nodes.
-
-        This keeps the tree traversal-oriented instead of turning parent
-        categories into giant record buckets.
-        """
-
-        root = tree_data["root"]
-
-        def process(node):
-
-            children = node.get(
-                "children",
-                [],
-            )
-
-            for child in children:
-                process(child)
-
-            if not children:
-                return
-
-            descendant_record_ids = set()
-
-            for child in children:
-                descendant_record_ids.update(
-                    child.get(
-                        "record_ids",
-                        [],
-                    )
-                )
-
-            node_record_ids = node.get(
-                "record_ids",
-                [],
-            )
-
-            node["record_ids"] = [
-                record_id
-                for record_id in node_record_ids
-                if record_id not in descendant_record_ids
-            ]
-
-        process(root)
-
-        return tree_data
---------------------------------------------------------------------------------------------
-tree_prompt.py
-
-"""
-Prompts used by the indexing subsystem.
-
-Keeping prompts separate from the implementation makes it easy to
-experiment with different indexing strategies without changing code.
-"""
-
-
-TREE_INDEX_SYSTEM_PROMPT = """
-You are a hierarchical document indexing system.
-
-Your job is to organize the supplied records into a small hierarchical
-tree that can later be traversed by another LLM.
-
-You are indexing ONLY the records provided in this request.
-
-IMPORTANT RULES:
-
-1. Return ONLY valid JSON.
-2. Do not return markdown.
-3. Do not explain your answer.
-4. Do not invent record IDs.
-5. Only use record IDs explicitly provided in the input.
-6. You do NOT need to generate node IDs.
-7. The application will assign node IDs automatically.
-8. Every node MUST have a non-empty title.
-9. Every node MUST contain:
-       title
-       summary
-       record_ids
-       children
-10. Category nodes should normally have an empty record_ids list.
-11. Organizational/category nodes MUST normally have an empty
-    record_ids list.
-
-12. Records MUST normally be attached to the most specific meaningful
-    leaf node.
-
-13. The root node MUST have an empty record_ids list unless there is
-    no meaningful child category for a record.
-
-14. Do NOT duplicate records in parent nodes merely because they also
-    appear in child nodes.
-
-15. A parent node summarizes its descendants; it should not act as a
-    second copy of all descendant records.
-
-16. If a record belongs to a specific category, attach it to that
-    category rather than its broad parent.
-
-17. The tree should contain the minimum amount of duplication needed
-    to represent meaningful relationships.
-18. Do not attach every record to a broad parent category when a more
-    specific child can represent it.
-19. Do not create unnecessary hierarchy depth.
-20. Do not create categories unrelated to the supplied records.
-21. Use the actual meaning of the records, not arbitrary grouping.
-22. A leaf node should represent a meaningful retrieval concept.
-23. If the supplied records represent different concepts, separate them.
-24. If a record belongs to multiple meaningful concepts, it may appear
-    in multiple leaf nodes.
-25. Do not create duplicate nodes with the same meaning.
-26. The root node must describe the supplied group of records.
-
-The tree is an INDEX.
-
-It is NOT the final answer.
-
-It is NOT a summary document.
-
-Its purpose is to help another LLM navigate toward the records that
-can answer a user's question.
-
-Required JSON structure:
-
+pipelineCode.txt 
 {
-  "title": "Human readable title",
-  "summary": "Short description",
-  "record_ids": [],
-  "children": []
+    context_builder.py
+
+
+"""
+pipeline/context_builder.py
+
+WHAT THIS FILE DOES
+--------------------
+Takes the Records returned by the retrievers (a list of structured
+objects) and turns them into ONE plain-text block that gets inserted
+into the prompt sent to the LLM.
+
+WHY IT EXISTS AS ITS OWN STEP
+--------------------------------
+Retrieval (finding the right records) and context formatting
+(turning records into LLM-readable text) are two different concerns.
+Keeping them separate means:
+  - You can change HOW retrieved data is displayed to the LLM
+    (e.g. add source labels, reorder, truncate long records) without
+    touching any retriever.
+  - Phase 2's re-ranker/CRAG steps can filter or reorder the list of
+    Records BEFORE it reaches this function, and this function
+    doesn't need to know or care that happened.
+
+INPUTS  : list[Record] -- already-retrieved, already-ranked records
+OUTPUTS : a single string, formatted with clear source labels,
+          ready to drop into the user prompt
+"""
+
+from loaders.record import Record
+
+# Human-readable labels for each source, used as section headers in
+# the context block so the LLM (and you, when debugging) can see
+# where each piece of information came from.
+SOURCE_LABELS = {
+    "cards": "CREDIT CARD PRODUCTS",
+    "offers_installment": "MERCHANT INSTALLMENT OFFERS",
+    "offers_discount": "MERCHANT DISCOUNT OFFERS",
+    "campaigns": "CAMPAIGNS",
 }
 
-Do not generate node_id fields.
-The application will generate them.
-"""
 
-
-def build_tree_user_prompt(
-    source: str,
-    records_text: str,
-) -> str:
-
-    return f"""
-Create a hierarchical index for the following records.
-
-SOURCE:
-{source}
-
-RECORDS:
-{records_text}
-
-INDEXING OBJECTIVE:
-
-Organize these records into meaningful retrieval categories.
-
-A user should later be able to ask questions such as:
-
-- What cashback campaigns exist?
-- Which campaigns are related to travel?
-- Which campaign is for a specific merchant?
-- What type of offer is available?
-
-The hierarchy should make it possible to navigate from broad concepts
-to specific concepts.
-
-IMPORTANT:
-
-- Use only the supplied records.
-- Use exact Record IDs.
-- Do not invent Record IDs.
-- Do not generate node IDs.
-- Put records in the most specific meaningful nodes.
-- Do not place every record into every category.
-- Category and organizational nodes should normally have no
-  record_ids.
-- The root should normally have an empty record_ids list.
-- Attach records to the most specific meaningful leaf/category.
-- Do not copy all child records into their parent.
-- Leaf nodes should contain the Record IDs they represent.
-- Every node must have a non-empty title.
-- Every node must contain title, summary, record_ids, and children.
-
-Return ONLY the JSON object.
-"""
-
---------------------------------------------------------------------------------------------
-tree_schema.py
-
-"""
-indexing/tree_schema.py
-
-WHAT THIS FILE DOES
--------------------
-Defines the data structures used by the LLM-generated hierarchical
-tree index.
-
-The tree is NOT the source data itself.
-
-Instead, the tree is an index that organizes Records into a hierarchy
-and points to the original records using their IDs.
-
-Example:
-
-    Banking Products
-        |
-        +-- Credit Cards
-        |      |
-        |      +-- Premium Cards
-        |             |
-        |             +-- record_ids: ["card_001", "card_007"]
-        |
-        +-- Cashback
-               |
-               +-- record_ids: ["campaign_003"]
-
-WHY THIS FILE EXISTS
---------------------
-The LLM will eventually generate JSON representing this structure.
-
-We do not want the rest of the application working directly with
-unvalidated dictionaries.
-
-Instead:
-
-    LLM JSON
-        ↓
-    TreeIndex
-        ↓
-    validation
-        ↓
-    TreeRetriever
-
-This gives the tree system a stable contract.
-
-IMPORTANT
----------
-The tree contains references to Records.
-
-It does NOT replace the original Record data.
-"""
-
-from __future__ import annotations
-
-from dataclasses import dataclass, field
-from typing import Any
-
-
-@dataclass
-class TreeNode:
-    node_id: str
-    title: str
-    summary: str = ""
-    children: list["TreeNode"] = field(default_factory=list)
-    record_ids: list[str] = field(default_factory=list)
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "node_id": self.node_id,
-            "title": self.title,
-            "summary": self.summary,
-            "record_ids": self.record_ids,
-            "children": [
-                child.to_dict()
-                for child in self.children
-            ],
-        }
-
-    @staticmethod
-    def from_dict(data: dict[str, Any]) -> "TreeNode":
-        if not isinstance(data, dict):
-            raise ValueError("Tree node must be a dictionary.")
-
-        children_data = data.get("children", [])
-
-        if not isinstance(children_data, list):
-            raise ValueError(
-                f"Node '{data.get('node_id', '<unknown>')}' "
-                f"has invalid 'children'. Expected a list."
-            )
-
-        record_ids = data.get("record_ids", [])
-
-        if not isinstance(record_ids, list):
-            raise ValueError(
-                f"Node '{data.get('node_id', '<unknown>')}' "
-                f"has invalid 'record_ids'. Expected a list."
-            )
-
-        return TreeNode(
-            node_id=str(data.get("node_id", "")),
-            title=str(data.get("title", "")),
-            summary=str(data.get("summary", "")),
-            record_ids=[
-                str(record_id)
-                for record_id in record_ids
-            ],
-            children=[
-                TreeNode.from_dict(child)
-                for child in children_data
-            ],
-        )
-
-
-@dataclass
-class TreeIndex:
-    source: str
-    root: TreeNode
-    version: str = "1.0"
-    metadata: dict[str, Any] = field(default_factory=dict)
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "version": self.version,
-            "source": self.source,
-            "metadata": self.metadata,
-            "root": self.root.to_dict(),
-        }
-
-    @staticmethod
-    def from_dict(data: dict[str, Any]) -> "TreeIndex":
-        if not isinstance(data, dict):
-            raise ValueError("Tree index must be a dictionary.")
-
-        if "root" not in data:
-            raise ValueError("Tree index is missing 'root'.")
-
-        return TreeIndex(
-            version=str(data.get("version", "1.0")),
-            source=str(data.get("source", "")),
-            metadata=data.get("metadata", {}),
-            root=TreeNode.from_dict(data["root"]),
-        )
-
-    def validate(
-        self,
-        valid_record_ids: set[str] | None = None,
-    ) -> None:
- 
-        if not self.source.strip():
-            raise ValueError("Tree index source cannot be empty.")
-
-        if not self.version.strip():
-            raise ValueError("Tree index version cannot be empty.")
-
-        if not isinstance(self.root, TreeNode):
-            raise ValueError("Tree index root must be a TreeNode.")
-
-        node_ids: set[str] = set()
-        referenced_record_ids: list[str] = []
-
-        def visit(node: TreeNode) -> None:
-
-            if not isinstance(node, TreeNode):
-                raise ValueError("Every child must be a TreeNode.")
-
-            if not node.node_id.strip():
-                raise ValueError(
-                    "Every tree node must have a non-empty node_id."
-                )
-
-            if not node.title.strip():
-                raise ValueError(
-                    f"Tree node '{node.node_id}' "
-                    f"must have a non-empty title."
-                )
-
-            if node.node_id in node_ids:
-                raise ValueError(
-                    f"Duplicate tree node_id detected: "
-                    f"'{node.node_id}'."
-                )
-
-            node_ids.add(node.node_id)
-
-            if not isinstance(node.record_ids, list):
-                raise ValueError(
-                    f"Node '{node.node_id}' "
-                    f"record_ids must be a list."
-                )
-
-            for record_id in node.record_ids:
-
-                if not isinstance(record_id, str):
-                    raise ValueError(
-                        f"Node '{node.node_id}' contains "
-                        f"a non-string record ID."
-                    )
-
-                if not record_id.strip():
-                    raise ValueError(
-                        f"Node '{node.node_id}' contains "
-                        f"an empty record ID."
-                    )
-
-                referenced_record_ids.append(record_id)
-
-            if not isinstance(node.children, list):
-                raise ValueError(
-                    f"Node '{node.node_id}' children must be a list."
-                )
-
-            for child in node.children:
-                visit(child)
-
-        visit(self.root)
-
-        if valid_record_ids is not None:
-
-            unknown_records = (
-                set(referenced_record_ids)
-                - valid_record_ids
-            )
-
-            if unknown_records:
-                raise ValueError(
-                    "Tree contains references to unknown records: "
-                    + ", ".join(sorted(unknown_records))
-                )
-
-    def get_all_nodes(self) -> list[TreeNode]:
-    
-        nodes: list[TreeNode] = []
-
-        def visit(node: TreeNode) -> None:
-            nodes.append(node)
-
-            for child in node.children:
-                visit(child)
-
-        visit(self.root)
-
-        return nodes
-
-    def get_record_ids(self) -> list[str]:
-
-        seen: set[str] = set()
-        record_ids: list[str] = []
-
-        for node in self.get_all_nodes():
-
-            for record_id in node.record_ids:
-
-                if record_id not in seen:
-                    seen.add(record_id)
-                    record_ids.append(record_id)
-
-        return record_ids
-
---------------------------------------------------------------------------------------------
-tree_stroage.py
-
-"""
-Persistent storage for TreeIndex objects.
-
-Tree indexes are generated offline and saved as JSON.
-
-The storage layer knows nothing about:
-- Ollama
-- retrieval
-- prompts
-- Records
-- Flask
-
-Its only responsibility is:
-
-TreeIndex -> JSON file
-JSON file -> TreeIndex
-"""
-
-import json
-from pathlib import Path
-
-from config.settings import PROJECT_ROOT
-from indexing.tree_schema import TreeIndex
-
-
-INDEX_DIR = PROJECT_ROOT / "data" / "indexes"
-
-
-class TreeStorage:
+def build_context(records: list[Record]) -> str:
     """
-    Save and load persistent TreeIndex objects.
+    Group records by source and render each as a labeled section,
+    e.g.:
+
+        === CREDIT CARD PRODUCTS ===
+        Card: VISA INFINITE
+        - Minimum limit: ...
+        ...
+
+        === CAMPAIGNS ===
+        Campaign: Egypt Air July 2026 Installment Campaign
+        ...
+
+    Returns an empty string if no records were retrieved.
     """
+    if not records:
+        return ""
 
-    def __init__(self, index_dir: Path = INDEX_DIR):
-        self.index_dir = Path(index_dir)
-        self.index_dir.mkdir(
-            parents=True,
-            exist_ok=True,
-        )
+    grouped: dict[str, list[Record]] = {}
+    for r in records:
+        grouped.setdefault(r.source, []).append(r)
 
-    def _get_path(self, source: str) -> Path:
-        if not source.strip():
-            raise ValueError("Source cannot be empty.")
+    sections = []
+    for source, source_records in grouped.items():
+        label = SOURCE_LABELS.get(source, source.upper())
+        block_lines = [f"=== {label} ==="]
+        for r in source_records:
+            block_lines.append(r.display_text)
+            block_lines.append("")  # blank line between records
+        sections.append("\n".join(block_lines).strip())
 
-        return self.index_dir / f"{source}_tree.json"
+    return "\n\n".join(sections)
 
-    def save(self, tree: TreeIndex) -> Path:
-
-        tree.validate()
-
-        path = self._get_path(tree.source)
-
-        with path.open(
-            "w",
-            encoding="utf-8",
-        ) as file:
-            json.dump(
-                tree.to_dict(),
-                file,
-                indent=2,
-                ensure_ascii=False,
-            )
-
-        return path
-
-    def load(self, source: str) -> TreeIndex:
-
-        path = self._get_path(source)
-
-        if not path.exists():
-            raise FileNotFoundError(
-                f"No tree index exists for source '{source}'. "
-                f"Expected file: {path}"
-            )
-
-        with path.open(
-            "r",
-            encoding="utf-8",
-        ) as file:
-            data = json.load(file)
-
-        tree = TreeIndex.from_dict(data)
-
-        tree.validate()
-
-        return tree
-
-    def exists(self, source: str) -> bool:
-        return self._get_path(source).exists()
-
-
---------------------------------------------------------------------------------------------
-llmCode.txt
-
-LLm_client.py
+------------------------------------------------------------------------------------------------------
+prompt_template.py
 
 
 """
-llm/llm_client.py
+pipeline/prompt_templates.py
 
 WHAT THIS FILE DOES
 --------------------
-A thin wrapper around Ollama's local HTTP API. Every other module in
-this project calls `LLMClient().generate(...)` and never talks to
-Ollama's HTTP endpoint directly.
+Holds every piece of TEXT we send to the LLM: the system prompt
+(instructions/persona) and the user prompt template (how we present
+retrieved context + the question). No logic lives here, only strings
+and simple string-formatting functions.
 
-WHY IT EXISTS
--------------
-If we scattered `requests.post("http://localhost:11434/...")` calls
-across the pipeline, agent, and evaluation code, switching to a
-different model runtime later (e.g. a hosted API, or vLLM) would mean
-hunting through every file. Instead, EVERY OTHER MODULE only depends
-on this class's `generate(system_prompt, user_prompt)` method. Swap
-what happens *inside* generate() and nothing else in the project needs
-to change.
+WHY IT EXISTS AS ITS OWN FILE
+--------------------------------
+Prompt wording is something you'll tune constantly while testing --
+tightening instructions, adding guardrail language, adjusting tone.
+Keeping it separate from rag_pipeline.py means you (or your partner)
+can edit HOW the bot talks without touching the code that decides
+WHAT data it sees. It also makes it trivial to compare two prompt
+versions side by side later, or A/B test them in the evaluation
+pipeline (Phase 2).
 
-HOW OLLAMA WORKS (briefly)
-----------------------------
-Ollama runs a local server (started with `ollama serve`, or
-automatically when you run `ollama run <model>`) that exposes a
-simple JSON HTTP API at http://localhost:11434. We use the
-`/api/chat` endpoint, which accepts a list of {role, content}
-messages -- same shape as OpenAI/Anthropic chat APIs -- and returns
-the model's reply.
-
-INPUTS  : system_prompt (str), user_prompt (str)
-OUTPUTS : the model's reply as a plain string
-
-REQUIRES: Ollama installed and running locally (`ollama serve`),
-          with the model in config.settings.OLLAMA_MODEL already
-          pulled (`ollama pull llama3.1:8b`, or whichever you set).
+INPUTS  : retrieved context (str), conversation/question (str)
+OUTPUTS : ready-to-send prompt strings
 """
 
-import requests
+SYSTEM_PROMPT = """You are a helpful assistant for Banque Misr's retail banking \
+customers. You answer questions about credit cards, merchant offers \
+(installments and discounts), and ongoing campaigns.
 
-from config.settings import (
-    OLLAMA_BASE_URL,
-    OLLAMA_INDEXER_MODEL,
-    OLLAMA_TRAVERSER_MODEL,
-    OLLAMA_GENERATOR_MODEL,
-    OLLAMA_INDEXER_TEMPERATURE,
-    OLLAMA_TRAVERSER_TEMPERATURE,
-    OLLAMA_GENERATOR_TEMPERATURE,
-    OLLAMA_TIMEOUT_SECONDS,
-)
+Rules you must follow:
+1. Base your answer ONLY on the "Retrieved information" provided below, \
+except for general banking knowledge questions (e.g. "what is APR", \
+"how does a credit card work") where you may use your own knowledge.
+2. If the retrieved information does not contain the answer, say so \
+clearly instead of guessing or making up numbers, fees, or dates.
+3. Be concise and direct. Use bullet points for lists of terms/fees.
+4. Never invent a card name, merchant name, fee, or date that is not \
+present in the retrieved information.
+"""
 
 
-class LLMClient:
+def build_user_prompt(question: str, context_text: str) -> str:
+    """
+    Combine the retrieved context and the user's question into the
+    final prompt sent to the LLM.
 
-    MODEL_BY_ROLE = {
-        "indexer": OLLAMA_INDEXER_MODEL,
-        "traverser": OLLAMA_TRAVERSER_MODEL,
-        "generator": OLLAMA_GENERATOR_MODEL,
-    }
-
-    TEMPERATURE_BY_ROLE = {
-        "indexer": OLLAMA_INDEXER_TEMPERATURE,
-        "traverser": OLLAMA_TRAVERSER_TEMPERATURE,
-        "generator": OLLAMA_GENERATOR_TEMPERATURE,
-    }
-
-    def __init__(
-        self,
-        role: str = "generator",
-        model: str = None,
-        temperature: float = None,
-    ):
-        
-        if role not in self.MODEL_BY_ROLE:
-            valid_roles = ", ".join(self.MODEL_BY_ROLE.keys())
-            raise ValueError(
-                f"Unknown LLM role '{role}'. "
-                f"Valid roles: {valid_roles}"
-            )
-
-        self.role = role
-
-        self.model = model or self.MODEL_BY_ROLE[role]
-
-        self.temperature = (
-            temperature
-            if temperature is not None
-            else self.TEMPERATURE_BY_ROLE[role]
+    If context_text is empty (no source matched anything), we still
+    send the question but flag that nothing was retrieved, so the
+    LLM leans on rule #1 above (general knowledge only, or say it
+    doesn't have specific info).
+    """
+    if context_text.strip():
+        return (
+            f"Retrieved information:\n"
+            f"{context_text}\n\n"
+            f"---\n"
+            f"Customer question: {question}"
+        )
+    else:
+        return (
+            f"Retrieved information: (nothing matched this question in our "
+            f"cards, offers, or campaigns data)\n\n"
+            f"---\n"
+            f"Customer question: {question}"
         )
 
-    def generate(
-        self,
-        system_prompt: str,
-        user_prompt: str,
-        response_format=None,
-    ) -> str:
-       
-        url = f"{OLLAMA_BASE_URL}/api/chat"
+------------------------------------------------------------------------------------------------------
+rag_pipeline.py
 
-        payload = {
-            "model": self.model,
+"""
+pipeline/rag_pipeline.py
 
-            "messages": [
-                {
-                    "role": "system",
-                    "content": system_prompt,
-                },
-                {
-                    "role": "user",
-                    "content": user_prompt,
-                },
-            ],
+WHAT THIS FILE DOES
+--------------------
+This is the "conductor" that runs one full question-answering turn:
 
-            "stream": False,
+    user question
+        -> ask EVERY retriever for its best matches (cards, offers, campaigns)
+        -> merge the results into one context block
+        -> build the final prompt
+        -> call the LLM
+        -> return the answer (plus the retrieved records, for transparency)
 
-            "options": {
-                "temperature": self.temperature,
-            },
+WHY PHASE 1's FLOW IS "DUMB" ON PURPOSE
+-------------------------------------------
+Notice this pipeline does NOT decide which source is relevant --
+it queries ALL of them, every time, and lets the keyword scores
+naturally return nothing (empty list) from sources that don't match.
+That's intentional: Phase 1's goal is a working, understandable
+baseline. Phase 2 replaces "ask everyone" with an `agent/router.py`
+step that uses the LLM to decide which source(s) to query -- but
+that step will simply choose WHICH of these same retrievers to call.
+Nothing here needs to be rewritten for that upgrade, only the
+decision of which retrievers to invoke.
+
+WHY WE RETURN retrieved_records TOO, NOT JUST THE ANSWER
+------------------------------------------------------------
+Returning what was actually retrieved (not just the final text) is
+essential for you to debug/understand the system, and it's exactly
+what Phase 2's pipeline_logger.py will start writing to a log file
+automatically.
+
+INPUTS  : question (str) -- the user's message
+OUTPUTS : a dict: {
+            "answer": str,
+            "retrieved_records": list[Record],
+            "context_text": str,
+          }
+"""
+
+from retrievers.cards_retriever import CardsRetriever
+from retrievers.offers_retriever import OffersRetriever
+from retrievers.campaigns_retriever import CampaignsRetriever
+from pipeline.context_builder import build_context
+from pipeline.prompt_templates import SYSTEM_PROMPT, build_user_prompt
+from llm.llm_client import LLMClient
+from config.settings import MAX_RESULTS_PER_SOURCE
+
+
+class RagPipeline:
+    def __init__(self):
+        # Each retriever loads its own data once here. If you add a new
+        # source later, add one line here and one line in `_retrieve_all`
+        # -- nothing else in this class changes.
+        self.cards_retriever = CardsRetriever()
+        self.offers_retriever = OffersRetriever()
+        self.campaigns_retriever = CampaignsRetriever()
+        self.llm_client = LLMClient()
+
+    def answer(self, question: str) -> dict:
+        retrieved_records = self._retrieve_all(question)
+        context_text = build_context(retrieved_records)
+        user_prompt = build_user_prompt(question, context_text)
+
+        answer_text = self.llm_client.generate(
+            system_prompt=SYSTEM_PROMPT,
+            user_prompt=user_prompt,
+        )
+
+        return {
+            "answer": answer_text,
+            "retrieved_records": retrieved_records,
+            "context_text": context_text,
         }
 
-        if response_format is not None:
-            payload["format"] = response_format
+    def _retrieve_all(self, question: str) -> list:
+        """
+        Query every retriever with the raw question and merge the results.
+        Each retriever independently returns [] if nothing matched, so
+        merging is just concatenation -- no source is ever forced into
+        the context if it found nothing relevant.
+        """
+        records = []
+        records.extend(self.cards_retriever.retrieve(question, MAX_RESULTS_PER_SOURCE))
+        records.extend(self.offers_retriever.retrieve(question, MAX_RESULTS_PER_SOURCE))
+        records.extend(self.campaigns_retriever.retrieve(question, MAX_RESULTS_PER_SOURCE))
+        return records
 
-        try:
-            response = requests.post(
-                url,
-                json=payload,
-                timeout=OLLAMA_TIMEOUT_SECONDS,
-            )
+}
 
-            response.raise_for_status()
-
-        except requests.exceptions.ConnectionError as e:
-            raise RuntimeError(
-                f"Could not reach local Ollama at "
-                f"{OLLAMA_BASE_URL}. "
-                f"Make sure Ollama is running and the model "
-                f"'{self.model}' is installed."
-            ) from e
-
-        except requests.exceptions.Timeout as e:
-            raise RuntimeError(
-                f"Ollama timed out after "
-                f"{OLLAMA_TIMEOUT_SECONDS} seconds "
-                f"while using model '{self.model}'."
-            ) from e
-
-        except requests.exceptions.HTTPError as e:
-            raise RuntimeError(
-                f"Ollama returned an error for model "
-                f"'{self.model}'. "
-                f"Make sure the model is installed with "
-                f"`ollama pull {self.model}`. "
-                f"Details: {e}"
-            ) from e
-
-        except requests.exceptions.RequestException as e:
-            raise RuntimeError(
-                f"Error communicating with local Ollama: {e}"
-            ) from e
-
-        try:
-            data = response.json()
-            return data["message"]["content"]
-
-        except (ValueError, KeyError, TypeError) as e:
-            raise RuntimeError(
-                "Ollama returned an unexpected response format."
-            ) from e
-
-
----------------------------------------------------------------------------
 loadersCode.txt
-
-
-base_loader.py
+{
+    base_loader.py
 
 """
 loaders/base_loader.py
@@ -2696,8 +512,7 @@ class BaseLoader(ABC):
         """
         raise NotImplementedError
 
-
---------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------
 campaigns_loader.py
 
 """
@@ -2783,8 +598,7 @@ class CampaignsLoader(BaseLoader):
         return " ".join(str(p) for p in parts if p).lower()
 
 
-
---------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------
 cards_loader.py
 
 """
@@ -2910,7 +724,7 @@ class CardsLoader(BaseLoader):
         parts.extend(str(v) for v in attributes.values())
         return " ".join(parts).lower()
 
---------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------
 offers_loader.py
 
 """
@@ -3066,9 +880,7 @@ class OffersLoader(BaseLoader):
                 return wb[name]
         return None
 
-
-
---------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------
 record.py
 
 """
@@ -3142,800 +954,207 @@ class Record:
             metadata=d.get("metadata", {}),
         )
 
---------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------
 
-pipelineCode.txt
-
-
-context_builder.py
-
-"""
-pipeline/context_builder.py
-
-WHAT THIS FILE DOES
---------------------
-Takes the Records returned by the retrievers (a list of structured
-objects) and turns them into ONE plain-text block that gets inserted
-into the prompt sent to the LLM.
-
-WHY IT EXISTS AS ITS OWN STEP
---------------------------------
-Retrieval (finding the right records) and context formatting
-(turning records into LLM-readable text) are two different concerns.
-Keeping them separate means:
-  - You can change HOW retrieved data is displayed to the LLM
-    (e.g. add source labels, reorder, truncate long records) without
-    touching any retriever.
-  - Phase 2's re-ranker/CRAG steps can filter or reorder the list of
-    Records BEFORE it reaches this function, and this function
-    doesn't need to know or care that happened.
-
-INPUTS  : list[Record] -- already-retrieved, already-ranked records
-OUTPUTS : a single string, formatted with clear source labels,
-          ready to drop into the user prompt
-"""
-
-from loaders.record import Record
-
-# Human-readable labels for each source, used as section headers in
-# the context block so the LLM (and you, when debugging) can see
-# where each piece of information came from.
-SOURCE_LABELS = {
-    "cards": "CREDIT CARD PRODUCTS",
-    "offers_installment": "MERCHANT INSTALLMENT OFFERS",
-    "offers_discount": "MERCHANT DISCOUNT OFFERS",
-    "campaigns": "CAMPAIGNS",
 }
 
-
-def build_context(records: list[Record]) -> str:
-    """
-    Group records by source and render each as a labeled section,
-    e.g.:
-
-        === CREDIT CARD PRODUCTS ===
-        Card: VISA INFINITE
-        - Minimum limit: ...
-        ...
-
-        === CAMPAIGNS ===
-        Campaign: Egypt Air July 2026 Installment Campaign
-        ...
-
-    Returns an empty string if no records were retrieved.
-    """
-    if not records:
-        return ""
-
-    grouped: dict[str, list[Record]] = {}
-    for r in records:
-        grouped.setdefault(r.source, []).append(r)
-
-    sections = []
-    for source, source_records in grouped.items():
-        label = SOURCE_LABELS.get(source, source.upper())
-        block_lines = [f"=== {label} ==="]
-        for r in source_records:
-            block_lines.append(r.display_text)
-            block_lines.append("")  # blank line between records
-        sections.append("\n".join(block_lines).strip())
-
-    return "\n\n".join(sections)
-
-
---------------------------------------------------------------------------------------------
-
-prompt_templates.py
-
-"""
-pipeline/prompt_templates.py
-
-WHAT THIS FILE DOES
---------------------
-Holds every piece of TEXT we send to the LLM: the system prompt
-(instructions/persona) and the user prompt template (how we present
-retrieved context + the question). No logic lives here, only strings
-and simple string-formatting functions.
-
-WHY IT EXISTS AS ITS OWN FILE
---------------------------------
-Prompt wording is something you'll tune constantly while testing --
-tightening instructions, adding guardrail language, adjusting tone.
-Keeping it separate from rag_pipeline.py means you (or your partner)
-can edit HOW the bot talks without touching the code that decides
-WHAT data it sees. It also makes it trivial to compare two prompt
-versions side by side later, or A/B test them in the evaluation
-pipeline (Phase 2).
-
-INPUTS  : retrieved context (str), conversation/question (str)
-OUTPUTS : ready-to-send prompt strings
-"""
-
-SYSTEM_PROMPT = """You are a helpful assistant for Banque Misr's retail banking \
-customers. You answer questions about credit cards, merchant offers \
-(installments and discounts), and ongoing campaigns.
-
-Rules you must follow:
-1. Base your answer ONLY on the "Retrieved information" provided below, \
-except for general banking knowledge questions (e.g. "what is APR", \
-"how does a credit card work") where you may use your own knowledge.
-2. If the retrieved information does not contain the answer, say so \
-clearly instead of guessing or making up numbers, fees, or dates.
-3. Be concise and direct. Use bullet points for lists of terms/fees.
-4. Never invent a card name, merchant name, fee, or date that is not \
-present in the retrieved information.
-"""
-
-
-def build_user_prompt(question: str, context_text: str) -> str:
-    """
-    Combine the retrieved context and the user's question into the
-    final prompt sent to the LLM.
-
-    If context_text is empty (no source matched anything), we still
-    send the question but flag that nothing was retrieved, so the
-    LLM leans on rule #1 above (general knowledge only, or say it
-    doesn't have specific info).
-    """
-    if context_text.strip():
-        return (
-            f"Retrieved information:\n"
-            f"{context_text}\n\n"
-            f"---\n"
-            f"Customer question: {question}"
-        )
-    else:
-        return (
-            f"Retrieved information: (nothing matched this question in our "
-            f"cards, offers, or campaigns data)\n\n"
-            f"---\n"
-            f"Customer question: {question}"
-        )
-
-
---------------------------------------------------------------------------------------------
-rag_pipeline.py
-
-"""
-pipeline/rag_pipeline.py
-
-WHAT THIS FILE DOES
---------------------
-This is the "conductor" that runs one full question-answering turn:
-
-    user question
-        -> ask EVERY retriever for its best matches (cards, offers, campaigns)
-        -> merge the results into one context block
-        -> build the final prompt
-        -> call the LLM
-        -> return the answer (plus the retrieved records, for transparency)
-
-WHY PHASE 1's FLOW IS "DUMB" ON PURPOSE
--------------------------------------------
-Notice this pipeline does NOT decide which source is relevant --
-it queries ALL of them, every time, and lets the keyword scores
-naturally return nothing (empty list) from sources that don't match.
-That's intentional: Phase 1's goal is a working, understandable
-baseline. Phase 2 replaces "ask everyone" with an `agent/router.py`
-step that uses the LLM to decide which source(s) to query -- but
-that step will simply choose WHICH of these same retrievers to call.
-Nothing here needs to be rewritten for that upgrade, only the
-decision of which retrievers to invoke.
-
-WHY WE RETURN retrieved_records TOO, NOT JUST THE ANSWER
-------------------------------------------------------------
-Returning what was actually retrieved (not just the final text) is
-essential for you to debug/understand the system, and it's exactly
-what Phase 2's pipeline_logger.py will start writing to a log file
-automatically.
-
-INPUTS  : question (str) -- the user's message
-OUTPUTS : a dict: {
-            "answer": str,
-            "retrieved_records": list[Record],
-            "context_text": str,
-          }
-"""
-
-from retrievers.tree_retriever import TreeRetriever
-from pipeline.context_builder import build_context
-from pipeline.prompt_templates import SYSTEM_PROMPT, build_user_prompt
-from llm.llm_client import LLMClient
-from loaders.cards_loader import CardsLoader
-from loaders.offers_loader import OffersLoader
-from loaders.campaigns_loader import CampaignsLoader
-from config.settings import MAX_RESULTS_PER_SOURCE
-
-
-class RagPipeline:
-    def __init__(self):
-        # The tree index only stores record IDs, so the actual Records
-        # still have to be loaded here for the retrievers to resolve
-        # those IDs back into answerable content.
-        self.cards_records = CardsLoader().load()
-        self.offers_records = OffersLoader().load()
-        self.campaigns_records = CampaignsLoader().load()
-
-        self.retrievers = {
-            "cards": TreeRetriever(
-                source="cards",
-                records=self.cards_records,
-            ),
-            "offers": TreeRetriever(
-                source="offers",
-                records=self.offers_records,
-            ),
-            "campaigns": TreeRetriever(
-                source="campaigns",
-                records=self.campaigns_records,
-            ),
-        }
-        self.llm_client = LLMClient()
-
-    def answer(self, question: str) -> dict:
-        retrieved_records = self._retrieve_all(question)
-        context_text = build_context(retrieved_records)
-        user_prompt = build_user_prompt(question, context_text)
-
-        answer_text = self.llm_client.generate(
-            system_prompt=SYSTEM_PROMPT,
-            user_prompt=user_prompt,
-        )
-
-        return {
-            "answer": answer_text,
-            "retrieved_records": retrieved_records,
-            "context_text": context_text,
-        }
-
-    def _retrieve_all(self, question: str):
-
-        all_records = []
-        seen_ids = set()
-
-        for source, retriever in self.retrievers.items():
-
-            records = retriever.retrieve(
-                question,
-                top_k=MAX_RESULTS_PER_SOURCE,
-            )
-
-            for record in records:
-
-                if record.id not in seen_ids:
-
-                    seen_ids.add(record.id)
-                    all_records.append(record)
-
-        return all_records
-
-------------------------------------------------------------------------
-retrieversCode.txt
-
-base_retriever.py
-
-"""
-retrievers/base_retriever.py
-
-WHAT THIS FILE DOES
---------------------
-Defines two things:
-
-1. `BaseRetriever` -- the contract every retriever follows: a
-   `retrieve(query, top_k)` method that takes the user's question and
-   returns the most relevant Record objects for that source.
-
-2. `KeywordRetriever` -- a ready-to-use implementation of that contract
-   using the simple keyword-overlap scoring from keyword_scoring.py.
-   Every Phase 1 retriever (cards, offers, campaigns) is just a
-   one-line subclass of this that says "load your records from this
-   loader" -- see cards_retriever.py for an example.
-
-WHY SPLIT IT THIS WAY
------------------------
-Cards, offers, and campaigns retrieval logic was IDENTICAL in Phase 1
-(all keyword matching) -- only the underlying data differed. Rather
-than copy-pasting the same scoring loop three times, we write it once
-here. If in Phase 2 you want ONE specific source to retrieve
-differently (say, campaigns should also filter by active status),
-that source's file stops inheriting from KeywordRetriever and
-implements BaseRetriever directly instead -- the rest of the app
-doesn't need to change, because it only ever calls `.retrieve()`.
-
-INPUTS  : none (abstract class) / a BaseLoader subclass (KeywordRetriever)
-OUTPUTS : none (abstract class) -- subclasses return list[Record]
-"""
-
-from abc import ABC, abstractmethod
-from loaders.record import Record
-from loaders.base_loader import BaseLoader
-from retrievers.keyword_scoring import score
-
-
-class BaseRetriever(ABC):
-    @abstractmethod
-    def retrieve(self, query: str, top_k: int) -> list[Record]:
-        """
-        Return the `top_k` Records most relevant to `query`.
-        Must be implemented by every subclass.
-        """
-        raise NotImplementedError
-
-
-class KeywordRetriever(BaseRetriever):
-    """
-    A reusable retriever that loads records once (via the given loader)
-    and scores them against each query using plain keyword overlap.
-    Subclass this and pass a loader instance to get a working retriever
-    for a new source in one line -- see cards_retriever.py.
-    """
-
-    def __init__(self, loader: BaseLoader):
-        self._records: list[Record] = loader.load()
-
-    def retrieve(self, query: str, top_k: int) -> list[Record]:
-        scored = [(score(query, r.search_text), r) for r in self._records]
-        scored = [(s, r) for s, r in scored if s > 0]
-        scored.sort(key=lambda pair: pair[0], reverse=True)
-        return [r for _, r in scored[:top_k]]
-
-
---------------------------------------------------------------------------------------------
-
-keyword_scoring.py
-
-"""
-retrievers/keyword_scoring.py
-
-WHAT THIS FILE DOES
---------------------
-A small, dependency-free scoring function: given a user query and a
-Record's search_text, returns a relevance score (higher = more
-relevant). This is Phase 1's ENTIRE retrieval "algorithm" -- no
-embeddings, no vector database, just counting overlapping words.
-
-WHY IT EXISTS AS ITS OWN FILE
-------------------------------
-Every source-specific retriever (cards, offers, campaigns) needs the
-SAME scoring logic -- only the data differs. Putting it here once
-means:
-  1. All retrievers score consistently.
-  2. If you later want to upgrade Phase 1's matching (e.g. add fuzzy
-     matching, or handle Arabic stemming), you change ONE function
-     and every retriever benefits immediately.
-
-HOW IT WORKS (intentionally simple, on purpose)
-------------------------------------------------
-1. Lowercase and split the query into individual words ("tokens").
-2. For each Record, count how many of those query words appear
-   anywhere in its search_text.
-3. That count IS the score. Records with score 0 are considered
-   irrelevant and dropped.
-
-This is a bag-of-words / keyword-overlap approach -- the simplest
-possible form of "search" without any ML. It's intentionally naive:
-Phase 1's goal is to prove the end-to-end loop works, not to have
-great retrieval quality yet. Phase 2's re-ranker and dynamic router
-will make this smarter.
-
-INPUTS  : query (str), a Record's search_text (str)
-OUTPUTS : an integer score
-"""
-
-import re
-
-# Very short, common English words add noise to keyword matching
-# (e.g. matching on "the", "is", "a" would make almost every record
-# score > 0). We filter these out before scoring.
-STOPWORDS = {
-    "the", "a", "an", "is", "are", "was", "were", "what", "which",
-    "who", "whom", "this", "that", "of", "for", "on", "in", "to",
-    "do", "does", "can", "i", "me", "my", "you", "your", "it", "its",
-    "and", "or", "with", "about", "have", "has", "there", "any",
-}
-
-
-def tokenize(text: str) -> list[str]:
-    """Lowercase and split into word tokens, dropping punctuation and stopwords."""
-    words = re.findall(r"[a-zA-Z0-9%]+", text.lower())
-    return [w for w in words if w not in STOPWORDS]
-
-
-def score(query: str, search_text: str) -> int:
-    """
-    Return the number of query tokens that appear in search_text.
-    A score of 0 means "no overlap -- not relevant".
-    """
-    query_tokens = set(tokenize(query))
-    if not query_tokens:
-        return 0
-    matches = sum(1 for token in query_tokens if token in search_text)
-    return matches
-
-
---------------------------------------------------------------------------------------------
-tree_retriever.py
-
-
-
-"""
-LLM-based hierarchical tree retriever.
-
-The retriever:
-    1. Loads a persistent tree.
-    2. Gives the tree structure to the traversal LLM.
-    3. Asks the LLM which nodes are relevant.
-    4. Resolves those nodes into Record IDs.
-    5. Returns the original Records.
-
-The LLM is used to navigate the index.
-
-It is NOT used to generate the final answer here.
-"""
-
-import json
-
-from indexing.tree_storage import TreeStorage
-from llm.llm_client import LLMClient
-
-
-TRAVERSAL_SYSTEM_PROMPT = """
-You are a hierarchical tree index traversal system.
-
-Your job is to navigate the supplied tree index and select the
-smallest set of nodes that contain records useful for answering the
-user's question.
-
-IMPORTANT:
-
-1. Return ONLY valid JSON.
-2. Do not answer the question.
-3. Do not invent node IDs.
-4. Only select node IDs present in the tree.
-5. Prefer specific nodes over broad parent nodes.
-6. Do not select the root unless the question genuinely requires
-   information spread across the entire source.
-7. Do not select unrelated sibling branches.
-8. If a specific leaf answers the question, select that leaf instead
-   of its parent.
-9. A node's record_ids identify the records represented by that node.
-10. Selecting a broad node can retrieve many records, so avoid broad
-    nodes when a more specific node is available.
-11. If nothing is relevant, return an empty list.
-
-The goal is HIGH PRECISION retrieval.
-
-Required output:
-
+llmCode.txt
 {
-  "selected_node_ids": [
-    "node_0001"
-  ]
-}
+    llm_client.py
+
+
+"""
+llm/llm_client.py
+
+WHAT THIS FILE DOES
+--------------------
+A thin wrapper around Ollama's local HTTP API. Every other module in
+this project calls `LLMClient().generate(...)` and never talks to
+Ollama's HTTP endpoint directly.
+
+WHY IT EXISTS
+-------------
+If we scattered `requests.post("http://localhost:11434/...")` calls
+across the pipeline, agent, and evaluation code, switching to a
+different model runtime later (e.g. a hosted API, or vLLM) would mean
+hunting through every file. Instead, EVERY OTHER MODULE only depends
+on this class's `generate(system_prompt, user_prompt)` method. Swap
+what happens *inside* generate() and nothing else in the project needs
+to change.
+
+HOW OLLAMA WORKS (briefly)
+----------------------------
+Ollama runs a local server (started with `ollama serve`, or
+automatically when you run `ollama run <model>`) that exposes a
+simple JSON HTTP API at http://localhost:11434. We use the
+`/api/chat` endpoint, which accepts a list of {role, content}
+messages -- same shape as OpenAI/Anthropic chat APIs -- and returns
+the model's reply.
+
+INPUTS  : system_prompt (str), user_prompt (str)
+OUTPUTS : the model's reply as a plain string
+
+REQUIRES: Ollama installed and running locally (`ollama serve`),
+          with the model in config.settings.OLLAMA_MODEL already
+          pulled (`ollama pull llama3.1:8b`, or whichever you set).
 """
 
+import requests
 
-class TreeRetriever:
+from config.settings import (
+    OLLAMA_BASE_URL,
+    OLLAMA_MODEL,
+    OLLAMA_TIMEOUT_SECONDS,
+    LLM_TEMPERATURE,
+)
 
-    def __init__(
-        self,
-        source: str,
-        records: list,
-        llm_client: LLMClient | None = None,
-        storage: TreeStorage | None = None,
-    ):
-        self.source = source
-        self.records = records
 
-        self.llm_client = (
-            llm_client
-            or LLMClient(role="traverser")
-        )
+class LLMClient:
+    def __init__(self, model: str = None):
+        # Allow overriding the model per-instance (useful later if, say,
+        # the CRAG-judge step in Phase 2 wants a different/smaller model
+        # than the final answer-writing step).
+        self.model = model or OLLAMA_MODEL
 
-        self.storage = (
-            storage
-            or TreeStorage()
-        )
-
-        self.tree = self.storage.load(source)
-
-        self.records_by_id = {
-            str(record.id): record
-            for record in records
+    def generate(self, system_prompt: str, user_prompt: str) -> str:
+        """
+        Send a system+user prompt pair to the local Ollama model and
+        return its text reply. Raises a clear RuntimeError if Ollama
+        isn't reachable, instead of a confusing low-level exception.
+        """
+        url = f"{OLLAMA_BASE_URL}/api/chat"
+        payload = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            "stream": False,
+            "options": {
+                "temperature": LLM_TEMPERATURE,
+            },
         }
-
-        self.nodes_by_id = {}
-
-        self._index_tree_nodes(
-            self.tree.root
-        )
-
-        self.last_trace = None
-
-        self.tree.validate(
-            set(self.records_by_id.keys())
-        )
-
-    def retrieve(
-        self,
-        query: str,
-        top_k: int = 5,
-    ) -> list:
-
-        if not query.strip():
-            return []
-
-        tree_text = self._build_tree_text()
-
-        user_prompt = f"""
-USER QUESTION:
-{query}
-
-TREE INDEX:
-{tree_text}
-
-TASK:
-
-Navigate the tree and select ONLY the most specific nodes that are
-relevant to the question.
-
-Think of the tree as folders:
-
-root
-  -> category
-      -> subcategory
-          -> specific leaf
-              -> records
-
-Prefer the deepest relevant branch.
-
-For example:
-
-If the question asks about cashback, do NOT select a general
-"Campaigns" node if a "Cashback" node exists.
-
-If the question asks about Egypt Air, do NOT select the entire
-"Installment Campaigns" branch if an "Egypt Air" node exists.
-
-Return ONLY:
-
-{{
-  "selected_node_ids": ["..."]
-}}
-"""
-
-        raw_response = self.llm_client.generate(
-            system_prompt=TRAVERSAL_SYSTEM_PROMPT,
-            user_prompt=user_prompt,
-            response_format="json",
-        )
-
-        selected_node_ids = self._parse_selected_nodes(
-            raw_response
-        )
-
-        selected_nodes = [
-            self.nodes_by_id[node_id]
-            for node_id in selected_node_ids
-            if node_id in self.nodes_by_id
-        ]
-
-        # Prefer selected leaf/specific nodes over their ancestors.
-        #
-        # If the LLM selected both:
-        #
-        #     node_0001 -> Campaigns
-        #     node_0004 -> Cashback
-        #
-        # and node_0004 is a descendant of node_0001,
-        # the broad parent does not add useful specificity.
-
-        selected_nodes = self._remove_redundant_ancestors(
-            selected_nodes
-        )
-
-        record_ids = []
-
-        for node in selected_nodes:
-
-            # A selected node stands for everything beneath it, not just
-            # the records pinned to it directly. Category nodes carry no
-            # record_ids of their own, so selecting "Installment" would
-            # otherwise retrieve nothing at all.
-            for record_id in self._collect_record_ids(node):
-
-                if record_id not in record_ids:
-                    record_ids.append(record_id)
-
-        records = [
-            self.records_by_id[record_id]
-            for record_id in record_ids
-            if record_id in self.records_by_id
-        ]
-
-        records = records[:top_k]
-
-        self.last_trace = {
-            "query": query,
-            "selected_node_ids": selected_node_ids,
-            "selected_nodes": [
-                {
-                    "node_id": node.node_id,
-                    "title": node.title,
-                }
-                for node in selected_nodes
-            ],
-            "record_ids": [
-                record.id
-                for record in records
-            ],
-            "selected_node_titles": [
-                node.title
-                for node in selected_nodes
-            ],
-            "record_count": len(records),
-        }
-
-        return records
-
-    def _build_tree_text(self) -> str:
-        """
-        Convert the tree into a compact representation for the
-        traversal LLM.
-        """
-
-        lines = []
-
-        def visit(node, depth: int):
-
-            indent = "  " * depth
-
-            lines.append(
-                f"{indent}- node_id: {node.node_id}"
-            )
-
-            lines.append(
-                f"{indent}  title: {node.title}"
-            )
-
-            if node.summary:
-
-                lines.append(
-                    f"{indent}  summary: {node.summary}"
-                )
-
-            if node.record_ids:
-
-                lines.append(
-                    f"{indent}  record_ids: "
-                    f"{node.record_ids}"
-                )
-
-            for child in node.children:
-                visit(child, depth + 1)
-
-        visit(self.tree.root, 0)
-
-        return "\n".join(lines)
-
-    def _parse_selected_nodes(
-        self,
-        raw_response: str,
-    ) -> list[str]:
-        """
-        Parse and validate the traversal LLM response.
-        """
 
         try:
-            data = json.loads(raw_response)
-
-        except json.JSONDecodeError as e:
-            raise ValueError(
-                "Traversal LLM returned invalid JSON."
+            response = requests.post(url, json=payload, timeout=OLLAMA_TIMEOUT_SECONDS)
+            response.raise_for_status()
+        except requests.exceptions.ConnectionError as e:
+            raise RuntimeError(
+                f"Could not reach Ollama at {OLLAMA_BASE_URL}. "
+                f"Is Ollama running? Try `ollama serve` in a terminal, "
+                f"and make sure you've pulled the model with "
+                f"`ollama pull {self.model}`."
+            ) from e
+        except requests.exceptions.HTTPError as e:
+            raise RuntimeError(
+                f"Ollama returned an error for model '{self.model}'. "
+                f"Have you run `ollama pull {self.model}`? Details: {e}"
             ) from e
 
-        selected = data.get(
-            "selected_node_ids",
-            [],
-        )
+        data = response.json()
+        # /api/chat with stream=False returns {"message": {"role": ..., "content": ...}, ...}
+        return data["message"]["content"]
 
-        if not isinstance(selected, list):
-            raise ValueError(
-                "'selected_node_ids' must be a list."
-            )
+}
 
-        valid_ids = []
+appCode.txt
+{
+    server.py
 
-        for node_id in selected:
+"""
+app/server.py
 
-            if not isinstance(node_id, str):
-                continue
+WHAT THIS FILE DOES
+--------------------
+A minimal Flask web server with two routes:
+  GET  /          -> serves the chat page (index.html)
+  POST /api/chat  -> receives {"message": "..."}, runs it through
+                      RagPipeline, and returns {"answer": "...", "sources": [...]}
 
-            if node_id in self.nodes_by_id:
-                valid_ids.append(node_id)
+WHY IT EXISTS AS A THIN LAYER
+---------------------------------
+The frontend is explicitly "not the main focus" per the project
+requirements -- the RAG/retrieval system is. So this file does the
+minimum needed to expose the pipeline over HTTP: no sessions, no
+database, no auth. It creates ONE RagPipeline instance at startup
+(so data isn't reloaded from Excel/JSON on every request) and calls
+`.answer(question)` on each incoming message.
 
-        return valid_ids
+INPUTS  : HTTP requests from the browser
+OUTPUTS : HTML page (GET /) and JSON answers (POST /api/chat)
+"""
 
-    @staticmethod
-    def _collect_record_ids(node) -> list[str]:
-        """
-        Every record ID in this node's subtree, parents before children,
-        so broader context leads and detail follows.
-        """
+from flask import Flask, request, jsonify, render_template
 
-        record_ids = []
+from pipeline.rag_pipeline import RagPipeline
+from config.settings import FLASK_HOST, FLASK_PORT, FLASK_DEBUG
 
-        def visit(current):
+app = Flask(__name__)
 
-            for record_id in current.record_ids:
+# Created once at startup: loading all three data sources takes a
+# moment, so we don't want to redo it on every single chat message.
+pipeline = RagPipeline()
 
-                if record_id not in record_ids:
-                    record_ids.append(record_id)
 
-            for child in current.children:
-                visit(child)
+@app.route("/")
+def index():
+    return render_template("index.html")
 
-        visit(node)
 
-        return record_ids
+@app.route("/api/chat", methods=["POST"])
+def chat():
+    data = request.get_json(silent=True) or {}
+    question = (data.get("message") or "").strip()
 
-    def _remove_redundant_ancestors(self, selected_nodes: list,) -> list:
-        """
-        Remove selected parent nodes when a selected descendant exists.
+    if not question:
+        return jsonify({"error": "Empty message"}), 400
 
-        This prevents the traversal model from unnecessarily retrieving
-        broad branches when it has already selected a more specific branch.
-        """
+    try:
+        result = pipeline.answer(question)
+    except RuntimeError as e:
+        # Most likely Ollama isn't running -- return a clear error the
+        # frontend can display, instead of a raw 500 stack trace.
+        return jsonify({"error": str(e)}), 503
 
-        selected_ids = {
-            node.node_id
-            for node in selected_nodes
-        }
+    # We send back which sources/titles were used, purely so the UI
+    # can show "based on: VISA INFINITE, Egypt Air Campaign" -- this
+    # is optional transparency, not required for the bot to work.
+    sources = [
+        {"source": r.source, "title": r.title} for r in result["retrieved_records"]
+    ]
 
-        # A selected node makes an ancestor redundant only when that
-        # ancestor was ALSO selected. Walking down while carrying the
-        # selected ancestors seen so far is what distinguishes "this
-        # node has a selected parent" from "this node has any parent".
-        redundant_ids = set()
+    return jsonify({"answer": result["answer"], "sources": sources})
 
-        def visit(node, selected_ancestors: frozenset):
 
-            if node.node_id in selected_ids and selected_ancestors:
+if __name__ == "__main__":
+    app.run(host=FLASK_HOST, port=FLASK_PORT, debug=FLASK_DEBUG)
 
-                redundant_ids.update(
-                    selected_ancestors
-                )
 
-            if node.node_id in selected_ids:
+------------------------------------------------------------------------------------------------------
+run.py
 
-                selected_ancestors = (
-                    selected_ancestors
-                    | {node.node_id}
-                )
+"""
+run.py
 
-            for child in node.children:
-                visit(child, selected_ancestors)
+WHAT THIS FILE DOES
+--------------------
+The single command to start the whole application:
+    python run.py
 
-        visit(
-            self.tree.root,
-            frozenset(),
-        )
+It just imports the Flask app object from app/server.py and runs it.
+Kept separate from app/server.py itself so that server.py can also be
+imported by tests or other scripts without automatically starting a
+web server.
 
-        return [
-            node
-            for node in selected_nodes
-            if node.node_id not in redundant_ids
-        ]
+REQUIRES: Ollama running locally (`ollama serve`) with the model from
+          config/settings.py already pulled.
+"""
 
-    def _index_tree_nodes(self, node):
-        """
-        Recursively index every node in the tree.
+from app.server import app
+from config.settings import FLASK_HOST, FLASK_PORT, FLASK_DEBUG
 
-        The retriever needs O(1)-style lookup from the node ID returned
-        by the traversal LLM to the actual TreeNode object.
-        """
+if __name__ == "__main__":
+    print(f"Starting BM Retail Banking Assistant on http://{FLASK_HOST}:{FLASK_PORT}")
+    app.run(host=FLASK_HOST, port=FLASK_PORT, debug=FLASK_DEBUG)
 
-        self.nodes_by_id[node.node_id] = node
-
-        for child in node.children:
-            self._index_tree_nodes(child)
+}

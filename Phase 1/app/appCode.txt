@@ -1,3 +1,75 @@
+server.py
+
+"""
+app/server.py
+
+WHAT THIS FILE DOES
+--------------------
+A minimal Flask web server with two routes:
+  GET  /          -> serves the chat page (index.html)
+  POST /api/chat  -> receives {"message": "..."}, runs it through
+                      RagPipeline, and returns {"answer": "...", "sources": [...]}
+
+WHY IT EXISTS AS A THIN LAYER
+---------------------------------
+The frontend is explicitly "not the main focus" per the project
+requirements -- the RAG/retrieval system is. So this file does the
+minimum needed to expose the pipeline over HTTP: no sessions, no
+database, no auth. It creates ONE RagPipeline instance at startup
+(so data isn't reloaded from Excel/JSON on every request) and calls
+`.answer(question)` on each incoming message.
+
+INPUTS  : HTTP requests from the browser
+OUTPUTS : HTML page (GET /) and JSON answers (POST /api/chat)
+"""
+
+from flask import Flask, request, jsonify, render_template
+
+from pipeline.rag_pipeline import RagPipeline
+from config.settings import FLASK_HOST, FLASK_PORT, FLASK_DEBUG
+
+app = Flask(__name__)
+
+# Created once at startup: loading all three data sources takes a
+# moment, so we don't want to redo it on every single chat message.
+pipeline = RagPipeline()
+
+
+@app.route("/")
+def index():
+    return render_template("index.html")
+
+
+@app.route("/api/chat", methods=["POST"])
+def chat():
+    data = request.get_json(silent=True) or {}
+    question = (data.get("message") or "").strip()
+
+    if not question:
+        return jsonify({"error": "Empty message"}), 400
+
+    try:
+        result = pipeline.answer(question)
+    except RuntimeError as e:
+        # Most likely Ollama isn't running -- return a clear error the
+        # frontend can display, instead of a raw 500 stack trace.
+        return jsonify({"error": str(e)}), 503
+
+    # We send back which sources/titles were used, purely so the UI
+    # can show "based on: VISA INFINITE, Egypt Air Campaign" -- this
+    # is optional transparency, not required for the bot to work.
+    sources = [
+        {"source": r.source, "title": r.title} for r in result["retrieved_records"]
+    ]
+
+    return jsonify({"answer": result["answer"], "sources": sources})
+
+
+if __name__ == "__main__":
+    app.run(host=FLASK_HOST, port=FLASK_PORT, debug=FLASK_DEBUG)
+
+
+------------------------------------------------------------------------------------------------------
 run.py
 
 """
@@ -23,182 +95,3 @@ from config.settings import FLASK_HOST, FLASK_PORT, FLASK_DEBUG
 if __name__ == "__main__":
     print(f"Starting BM Retail Banking Assistant on http://{FLASK_HOST}:{FLASK_PORT}")
     app.run(host=FLASK_HOST, port=FLASK_PORT, debug=FLASK_DEBUG)
-
-
-
-
------------------------------------------------------------------------------------------------------------
-settings.py
-
-"""
-config/settings.py
-
-WHAT THIS FILE DOES
---------------------
-This is the ONE file that holds every "knob" you might want to turn:
-which Ollama model to use, where the data files live, how many
-retrieved records to show the LLM, etc.
-
-WHY IT EXISTS
--------------
-If these values were scattered across the codebase (a model name typed
-inside llm_client.py, a file path typed inside cards_loader.py, ...),
-changing your setup later would mean hunting through many files.
-Instead, every other module imports FROM here and never hardcodes
-these values itself. Want to switch from "llama3.1" to "qwen2.5"?
-Change ONE line, here.
-
-INPUTS  : none (this file only reads environment variables, with safe defaults)
-OUTPUTS : constants that other modules import, e.g.
-          from config.settings import OLLAMA_MODEL, DATA_DIR
-"""
-
-import os
-from pathlib import Path
-
-# ---------------------------------------------------------------------------
-# Project paths
-# ---------------------------------------------------------------------------
-
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-
-RAW_DATA_DIR = PROJECT_ROOT / "data" / "raw"
-PROCESSED_DATA_DIR = PROJECT_ROOT / "data" / "processed"
-
-# Markdown rendered from Records, fed to PageIndex. Also handy to open
-# by hand when a generated tree looks wrong.
-MARKDOWN_DIR = PROJECT_ROOT / "data" / "markdown"
-
-CARDS_XLSX_PATH = RAW_DATA_DIR / "20260306_Product_Catalog_new_version.xlsx"
-OFFERS_XLSX_PATH = RAW_DATA_DIR / "Feb_2026_offers_-_Wave_1_-_Call_Center.xlsx"
-CAMPAIGNS_JSON_PATH = RAW_DATA_DIR / "campaigns_clean.json"
-
-# ============================================================
-# LLM / OLLAMA CONFIGURATION
-# ============================================================
-OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
-
-# ------------------------------------------------------------
-# Models
-# ------------------------------------------------------------
-OLLAMA_INDEXER_MODEL   = "llama3.1:8b"
-OLLAMA_TRAVERSER_MODEL = "llama3.1:8b"
-OLLAMA_GENERATOR_MODEL = "llama3.1:8b"
-
-# ------------------------------------------------------------
-# Temperature
-# ------------------------------------------------------------
-OLLAMA_INDEXER_TEMPERATURE = 0.0
-OLLAMA_TRAVERSER_TEMPERATURE = 0.0
-OLLAMA_GENERATOR_TEMPERATURE = 0.2
-
-# ---------------------------------------------------------------------------
-# LLM request timeout
-# ---------------------------------------------------------------------------
-
-OLLAMA_TIMEOUT_SECONDS = int(
-    os.environ.get(
-        "OLLAMA_TIMEOUT_SECONDS",
-        "300",
-    )
-)
-
-# ---------------------------------------------------------------------------
-# LLM tree indexing
-# ---------------------------------------------------------------------------
-
-# Maximum number of records sent to the indexer in one LLM request.
-#
-# This is deliberately small because the local 1B model must understand
-# the records, organize them, and generate structured JSON.
-TREE_INDEX_BATCH_SIZE = int(
-    os.environ.get(
-        "TREE_INDEX_BATCH_SIZE",
-        "10",
-    )
-)
-
-# Number of times the indexer may retry after invalid output.
-TREE_INDEX_MAX_RETRIES = int(
-    os.environ.get(
-        "TREE_INDEX_MAX_RETRIES",
-        "0",
-    )
-)
-
-# Maximum number of records a leaf node should directly reference.
-#
-# This prevents a generic category node from becoming a giant bucket.
-TREE_INDEX_MAX_RECORDS_PER_LEAF = int(
-    os.environ.get(
-        "TREE_INDEX_MAX_RECORDS_PER_LEAF",
-        "5",
-    )
-)
-
-# ---------------------------------------------------------------------------
-# PageIndex tree indexing
-# ---------------------------------------------------------------------------
-# The settings above (batch size, retries, records per leaf) belong to the
-# older hand-rolled TreeBuilder/BatchedTreeBuilder. PageIndex processes the
-# whole document at once, so it uses these instead.
-
-# Whether PageIndex should write an LLM-generated summary onto each node.
-# "no" makes indexing fully deterministic and requires no LLM at all;
-# "yes" gives the traversal LLM more to go on, at one call per node.
-PAGEINDEX_ADD_NODE_SUMMARY = os.environ.get(
-    "PAGEINDEX_ADD_NODE_SUMMARY",
-    "yes",
-)
-
-# PageIndex talks to models through LiteLLM, whose naming is
-# "provider/model" -- so the local Ollama model needs an "ollama/" prefix.
-PAGEINDEX_SUMMARY_MODEL = os.environ.get(
-    "PAGEINDEX_SUMMARY_MODEL",
-    f"ollama/{OLLAMA_INDEXER_MODEL}",
-)
-
-# Nodes shorter than this many tokens are not sent to the LLM at all --
-# PageIndex uses their own text as the summary.
-PAGEINDEX_SUMMARY_TOKEN_THRESHOLD = int(
-    os.environ.get(
-        "PAGEINDEX_SUMMARY_TOKEN_THRESHOLD",
-        "200",
-    )
-)
-
-# Every node summary is shown to the traversal LLM, so an un-truncated
-# summary of a 366-column card record would blow up the traversal prompt.
-PAGEINDEX_MAX_SUMMARY_CHARS = int(
-    os.environ.get(
-        "PAGEINDEX_MAX_SUMMARY_CHARS",
-        "400",
-    )
-)
-
-# ---------------------------------------------------------------------------
-# Retrieval settings (Phase 1: simple keyword retrieval)
-# ---------------------------------------------------------------------------
-# Max records each retriever is allowed to return per query. Keeps the
-# context we send to the LLM small and focused instead of dumping
-# everything.
-MAX_RESULTS_PER_SOURCE = int(os.environ.get("MAX_RESULTS_PER_SOURCE", "5"))
-
-# ---------------------------------------------------------------------------
-# Flask app settings
-# ---------------------------------------------------------------------------
-FLASK_HOST = os.environ.get("FLASK_HOST", "127.0.0.1")
-FLASK_PORT = int(os.environ.get("FLASK_PORT", "5000"))
-FLASK_DEBUG = os.environ.get("FLASK_DEBUG", "true").lower() == "true"
-
-
-
-
-
-
-
-
-
-
-
-------------------------------------------------------------------------------------------------------------

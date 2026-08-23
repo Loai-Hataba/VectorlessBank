@@ -157,12 +157,14 @@ OLLAMA_GUARDRAIL_INPUT_NUM_CTX = int(
     )
 )
 
-# Sees the generated answer plus the context it must be checked against,
-# so it needs more room than the input guardrail.
+# Sees the generated answer plus the whole context it is checked
+# against, so it needs the same room as the generator -- see the note on
+# GUARDRAIL_MAX_CONTEXT_CHARS about why a verifier must not be shown
+# less than the writer was.
 OLLAMA_GUARDRAIL_OUTPUT_NUM_CTX = int(
     os.environ.get(
         "OLLAMA_GUARDRAIL_OUTPUT_NUM_CTX",
-        "16384",
+        "32768",
     )
 )
 
@@ -314,11 +316,30 @@ CRAG_MIN_RELEVANT = int(os.environ.get("CRAG_MIN_RELEVANT", "1"))
 # Output guardrail (Phase 2)
 # ---------------------------------------------------------------------------
 
-# Context shown to the output reviewer. Smaller than the generator's
-# share because this runs on every turn and only has to check claims
-# against the source, not quote it back.
+# Context shown to the output reviewer.
+#
+# THIS MUST NOT BE SMALLER THAN THE GENERATOR'S BUDGET.
+#
+# It was 8000 on the reasoning that a reviewer only has to check claims,
+# not quote them, so it could work from less. That reasoning is wrong,
+# and measurably so: a verifier shown less than the writer saw will
+# report the writer's legitimate content as unsupported, every single
+# time that content happens to sit past the verifier's cut.
+#
+# It produced exactly that. An answer citing the VISA INFINITE's lounge
+# access, Booking.com discount and London Cab cashback -- all verbatim
+# from the record, all around character 12,000 -- was flagged as
+# fabrication, because the reviewer's 8000-character view stopped short
+# of them. The check was not wrong about what it could see; it was
+# shown the wrong thing.
+#
+# Tying it to the generator's own budget makes the guarantee structural
+# rather than a number that has to be remembered twice.
 GUARDRAIL_MAX_CONTEXT_CHARS = int(
-    os.environ.get("GUARDRAIL_MAX_CONTEXT_CHARS", "8000")
+    os.environ.get(
+        "GUARDRAIL_MAX_CONTEXT_CHARS",
+        str(MAX_CONTEXT_TOTAL_CHARS),
+    )
 )
 
 # Whether a suspected fabrication blocks the answer or merely annotates

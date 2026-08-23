@@ -20,6 +20,15 @@ const composer = document.getElementById("composer");
 const input = document.getElementById("message-input");
 const sendButton = document.getElementById("send-button");
 
+function getSessionId() {
+  let sessionId = localStorage.getItem("session_id");
+  if (!sessionId) {
+    sessionId = crypto.randomUUID();
+    localStorage.setItem("session_id", sessionId);
+  }
+  return sessionId;
+}
+
 composer.addEventListener("submit", async (event) => {
   event.preventDefault();
 
@@ -36,7 +45,7 @@ composer.addEventListener("submit", async (event) => {
     const response = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: question }),
+      body: JSON.stringify({ message: question, session_id: getSessionId() }),
     });
 
     const data = await response.json();

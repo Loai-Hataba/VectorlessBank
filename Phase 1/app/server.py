@@ -42,20 +42,19 @@ def index():
 def chat():
     data = request.get_json(silent=True) or {}
     question = (data.get("message") or "").strip()
+    session_id = (data.get("session_id") or "").strip()
 
     if not question:
         return jsonify({"error": "Empty message"}), 400
 
+    if not session_id:
+        return jsonify({"error": "Missing session_id"}), 400
+
     try:
-        result = pipeline.answer(question)
+        result = pipeline.answer(question, session_id=session_id)
     except RuntimeError as e:
-        # Most likely Ollama isn't running -- return a clear error the
-        # frontend can display, instead of a raw 500 stack trace.
         return jsonify({"error": str(e)}), 503
 
-    # We send back which sources/titles were used, purely so the UI
-    # can show "based on: VISA INFINITE, Egypt Air Campaign" -- this
-    # is optional transparency, not required for the bot to work.
     sources = [
         {"source": r.source, "title": r.title} for r in result["retrieved_records"]
     ]

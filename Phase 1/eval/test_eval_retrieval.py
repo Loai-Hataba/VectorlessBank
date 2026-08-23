@@ -3,8 +3,9 @@ import json
 from pathlib import Path
 import sys
 
-sys.path.insert(0, r"C:\Users\Omart\Documents\GitHub\VectorlessBank\.claude\worktrees\phase2-partner-b\Phase 1")
-sys.path.insert(0, r"C:\Users\Omart\Documents\GitHub\VectorlessBank\.claude\worktrees\phase2-partner-b\Phase 1\eval")
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE.parent))   # Phase 1/  -- loaders, config
+sys.path.insert(0, str(HERE))          # eval/     -- eval_retrieval
 
 from eval_retrieval import prf, TESTSET_PATH
 

@@ -47,6 +47,11 @@ from loaders.cards_loader import CardsLoader
 from loaders.offers_loader import OffersLoader
 from loaders.campaigns_loader import CampaignsLoader
 from config.settings import MAX_RESULTS_PER_SOURCE
+from pipeline.pipeline_logger import log_stage
+from pipeline.input_guardrail import InputGuardrail
+from pipeline.query_contextualizer import QueryContextualizer
+from pipeline.router import Router
+from memory.conversation_memory import ConversationMemory
 
 
 class RagPipeline:
@@ -72,16 +77,63 @@ class RagPipeline:
                 records=self.campaigns_records,
             ),
         }
+        self.input_guardrail = InputGuardrail()
+        self.query_contextualizer = QueryContextualizer()
+        self.router = Router()
+        self.conversation_memory = ConversationMemory()
         self.llm_client = LLMClient()
 
-    def answer(self, question: str) -> dict:
-        retrieved_records = self._retrieve_all(question)
+    def answer(self, question: str, session_id: str) -> dict:
+        turn_id = self.conversation_memory.next_turn_id(session_id)
+        guardrail_result = self.input_guardrail.check(
+            raw_message=question,
+            session_id=session_id,
+            turn_id=turn_id,
+        )
+
+        if guardrail_result["blocked"]:
+            return {
+                "answer": guardrail_result["user_facing_message"],
+                "retrieved_records": [],
+                "context_text": "",
+            }
+
+        memory_context = self.conversation_memory.get_context(session_id)
+
+        contextualized_question = self.query_contextualizer.contextualize(
+            raw_question=question,
+            memory_context=memory_context,
+            session_id=session_id,
+            turn_id=turn_id,
+        )
+
+        routing_decision = self.router.route(
+            contextualized_question=contextualized_question,
+            session_id=session_id,
+            turn_id=turn_id,
+        )
+
+        if routing_decision["needs_retrieval"]:
+            retrieved_records = self._retrieve_from(
+                contextualized_question,
+                sources=routing_decision["sources"],
+            )
+        else:
+            retrieved_records = []
+
         context_text = build_context(retrieved_records)
-        user_prompt = build_user_prompt(question, context_text)
+        user_prompt = build_user_prompt(contextualized_question, context_text)
 
         answer_text = self.llm_client.generate(
             system_prompt=SYSTEM_PROMPT,
             user_prompt=user_prompt,
+        )
+
+        self.conversation_memory.add_turn(
+            session_id=session_id,
+            turn_id=turn_id,
+            user_message=question,
+            assistant_message=answer_text,
         )
 
         return {
@@ -90,12 +142,13 @@ class RagPipeline:
             "context_text": context_text,
         }
 
-    def _retrieve_all(self, question: str):
+    def _retrieve_from(self, question: str, sources: list) -> list:
 
         all_records = []
         seen_ids = set()
 
-        for source, retriever in self.retrievers.items():
+        for source in sources:
+            retriever = self.retrievers[source]
 
             records = retriever.retrieve(
                 question,
@@ -103,9 +156,7 @@ class RagPipeline:
             )
 
             for record in records:
-
                 if record.id not in seen_ids:
-
                     seen_ids.add(record.id)
                     all_records.append(record)
 

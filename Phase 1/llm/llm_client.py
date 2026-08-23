@@ -52,6 +52,12 @@ from config.settings import (
     OLLAMA_INDEXER_NUM_CTX,
     OLLAMA_TRAVERSER_NUM_CTX,
     OLLAMA_GENERATOR_NUM_CTX,
+    OLLAMA_ROUTER_NUM_CTX,
+    OLLAMA_SUMMARIZER_NUM_CTX,
+    OLLAMA_GUARDRAIL_INPUT_NUM_CTX,
+    OLLAMA_GUARDRAIL_OUTPUT_NUM_CTX,
+    OLLAMA_GRADER_NUM_CTX,
+    OLLAMA_DEFAULT_NUM_CTX,
     OLLAMA_TIMEOUT_SECONDS,
     OLLAMA_ROUTER_TEMPERATURE,
     OLLAMA_SUMMARIZER_TEMPERATURE,
@@ -94,6 +100,11 @@ class LLMClient:
         "indexer": OLLAMA_INDEXER_NUM_CTX,
         "traverser": OLLAMA_TRAVERSER_NUM_CTX,
         "generator": OLLAMA_GENERATOR_NUM_CTX,
+        "router": OLLAMA_ROUTER_NUM_CTX,
+        "summarizer": OLLAMA_SUMMARIZER_NUM_CTX,
+        "guardrail_input": OLLAMA_GUARDRAIL_INPUT_NUM_CTX,
+        "guardrail_output": OLLAMA_GUARDRAIL_OUTPUT_NUM_CTX,
+        "grader": OLLAMA_GRADER_NUM_CTX,
     }
 
     def __init__(
@@ -121,10 +132,16 @@ class LLMClient:
             else self.TEMPERATURE_BY_ROLE[role]
         )
 
+        # .get() with a fallback, not [role], on purpose: a role added to
+        # MODEL_BY_ROLE but not here should degrade to a working default
+        # rather than raise KeyError when the client is constructed. That
+        # is not hypothetical -- it happened when the five Phase 2 roles
+        # were added to the model and temperature tables only, which made
+        # LLMClient(role="router") and every other new role unusable.
         self.num_ctx = (
             num_ctx
             if num_ctx is not None
-            else self.NUM_CTX_BY_ROLE[role]
+            else self.NUM_CTX_BY_ROLE.get(role, OLLAMA_DEFAULT_NUM_CTX)
         )
 
     def generate(

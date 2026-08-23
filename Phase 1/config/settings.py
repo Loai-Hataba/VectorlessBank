@@ -117,10 +117,71 @@ OLLAMA_TRAVERSER_NUM_CTX = int(
 )
 
 # Retrieved records + conversation memory + the answer being written.
+#
+# Raised from 16384 after a measured failure: a nine-record context came
+# to ~20,955 tokens (a single card record is ~10,600 tokens of
+# display_text), so the prompt was truncated at 16,383 and the model
+# answered "the annual fee is EGP 4,500" -- a number that appears
+# nowhere in that card's record. With the full prompt in view the same
+# question is answered correctly and the fee is honestly reported as not
+# stated. See also MAX_RECORD_CHARS below, which attacks the same
+# problem from the other end.
 OLLAMA_GENERATOR_NUM_CTX = int(
     os.environ.get(
         "OLLAMA_GENERATOR_NUM_CTX",
+        "32768",
+    )
+)
+
+# Phase 2 roles. These are classification/judgement calls over a handful
+# of records or a short question, not whole-tree reads, so they need far
+# less room than the traverser.
+OLLAMA_ROUTER_NUM_CTX = int(
+    os.environ.get(
+        "OLLAMA_ROUTER_NUM_CTX",
+        "8192",
+    )
+)
+
+OLLAMA_SUMMARIZER_NUM_CTX = int(
+    os.environ.get(
+        "OLLAMA_SUMMARIZER_NUM_CTX",
+        "8192",
+    )
+)
+
+OLLAMA_GUARDRAIL_INPUT_NUM_CTX = int(
+    os.environ.get(
+        "OLLAMA_GUARDRAIL_INPUT_NUM_CTX",
+        "8192",
+    )
+)
+
+# Sees the generated answer plus the context it must be checked against,
+# so it needs more room than the input guardrail.
+OLLAMA_GUARDRAIL_OUTPUT_NUM_CTX = int(
+    os.environ.get(
+        "OLLAMA_GUARDRAIL_OUTPUT_NUM_CTX",
         "16384",
+    )
+)
+
+# Sees every candidate record, but as compact GRADER_MAX_RECORD_CHARS
+# renderings rather than full display_text.
+OLLAMA_GRADER_NUM_CTX = int(
+    os.environ.get(
+        "OLLAMA_GRADER_NUM_CTX",
+        "16384",
+    )
+)
+
+# Fallback for any role that has no explicit entry, so that adding a
+# role to MODEL_BY_ROLE without adding one here degrades to a usable
+# default instead of raising KeyError at construction time.
+OLLAMA_DEFAULT_NUM_CTX = int(
+    os.environ.get(
+        "OLLAMA_DEFAULT_NUM_CTX",
+        "8192",
     )
 )
 
@@ -179,6 +240,22 @@ PAGEINDEX_MAX_SUMMARY_CHARS = int(
 # context we send to the LLM small and focused instead of dumping
 # everything.
 MAX_RESULTS_PER_SOURCE = int(os.environ.get("MAX_RESULTS_PER_SOURCE", "5"))
+
+# Maximum characters of a single record's display_text placed into the
+# generator context.
+#
+# The card catalogue has 366 columns, so one card record renders to
+# ~42,000 characters (~10,600 tokens). Without a cap, two retrieved
+# cards overflow any reasonable context window and Ollama silently
+# truncates the prompt at an arbitrary point -- which is exactly how a
+# fabricated annual fee ended up in an answer.
+#
+# 6000 characters (~1,500 tokens) keeps the head of the record, which
+# is where identity, type, fees and limits live, and lets roughly six
+# records fit comfortably alongside the prompt and the answer. Raise it
+# if answers start missing detail that lives late in a record; lower it
+# if prompts are still too large.
+MAX_RECORD_CHARS = int(os.environ.get("MAX_RECORD_CHARS", "6000"))
 VALID_SOURCES = frozenset({"cards", "offers", "campaigns"})
 
 # how many turns of raw user input to keep in memory.

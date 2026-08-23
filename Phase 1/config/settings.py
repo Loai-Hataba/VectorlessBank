@@ -241,21 +241,39 @@ PAGEINDEX_MAX_SUMMARY_CHARS = int(
 # everything.
 MAX_RESULTS_PER_SOURCE = int(os.environ.get("MAX_RESULTS_PER_SOURCE", "5"))
 
-# Maximum characters of a single record's display_text placed into the
-# generator context.
+# Total characters of record text allowed in one generator context,
+# shared out between however many records were kept.
 #
-# The card catalogue has 366 columns, so one card record renders to
-# ~42,000 characters (~10,600 tokens). Without a cap, two retrieved
-# cards overflow any reasonable context window and Ollama silently
-# truncates the prompt at an arbitrary point -- which is exactly how a
-# fabricated annual fee ended up in an answer.
+# WHY A SHARED BUDGET AND NOT A FIXED PER-RECORD CAP
+# --------------------------------------------------
+# The first version of this capped every record at a flat 6000
+# characters. That bounded the prompt correctly but silently cost
+# answers: a card record is ~42,000 characters, its fees sit around
+# character 2,000 and its BENEFITS sit around character 12,000, so a
+# 6000 cap kept the fees and threw the benefits away. The output
+# guardrail then flagged perfectly good benefit claims as unsupported,
+# because in the context it was shown they genuinely were.
 #
-# 6000 characters (~1,500 tokens) keeps the head of the record, which
-# is where identity, type, fees and limits live, and lets roughly six
-# records fit comfortably alongside the prompt and the answer. Raise it
-# if answers start missing detail that lives late in a record; lower it
-# if prompts are still too large.
-MAX_RECORD_CHARS = int(os.environ.get("MAX_RECORD_CHARS", "6000"))
+# A shared budget adapts instead: when re-ranking keeps two records they
+# get ~30,000 characters each and nothing important is lost, and when it
+# keeps six they get ~10,000 each and the prompt is still bounded. The
+# guarantee that matters -- the total never overflows the window -- is
+# preserved either way, because it is now stated directly rather than
+# inferred from a per-record guess.
+#
+# 60,000 characters is roughly 15,000 tokens, which sits comfortably in
+# the generator's 32,768-token window alongside conversation memory and
+# the answer being written.
+MAX_CONTEXT_TOTAL_CHARS = int(
+    os.environ.get("MAX_CONTEXT_TOTAL_CHARS", "60000")
+)
+
+# Floor on any single record's share, so that a large result set cannot
+# shrink every record into uselessness. If the floor and the record
+# count together exceed the budget, the budget gives way -- a prompt
+# slightly over target is recoverable, whereas records cut to a few
+# hundred characters answer nothing.
+MIN_RECORD_CHARS = int(os.environ.get("MIN_RECORD_CHARS", "4000"))
 
 # ---------------------------------------------------------------------------
 # Corrective RAG / re-ranking (Phase 2)

@@ -1,5 +1,5 @@
 """
-eval/eval_retrieval.py
+evaluation/eval_retrieval.py
 
 TIER 1 EVALUATION -- retrieval correctness, deterministic.
 
@@ -28,12 +28,12 @@ Answer quality is Tier 2's job (RAGAS), run as a batch.
 
 USAGE
 -----
-    python eval/eval_retrieval.py                      # everything
-    python eval/eval_retrieval.py --limit 6            # first 6 cases
-    python eval/eval_retrieval.py --category single_source_cards
-    python eval/eval_retrieval.py --case offers_001
-    python eval/eval_retrieval.py --grade              # + CRAG grader
-    python eval/eval_retrieval.py --json out.json      # machine readable
+    python evaluation/eval_retrieval.py                      # everything
+    python evaluation/eval_retrieval.py --limit 6            # first 6 cases
+    python evaluation/eval_retrieval.py --category single_source_cards
+    python evaluation/eval_retrieval.py --case offers_001
+    python evaluation/eval_retrieval.py --grade              # + CRAG grader
+    python evaluation/eval_retrieval.py --json out.json      # machine readable
 
 --grade runs the Step 1 grader over what retrieval returned, so the
 same suite reports whether grading improves precision and whether the
@@ -46,7 +46,7 @@ import sys
 import time
 from pathlib import Path
 
-# Allow running as `python eval/eval_retrieval.py` from the project root.
+# Allow running as `python evaluation/eval_retrieval.py` from the project root.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from config.settings import MAX_RESULTS_PER_SOURCE          # noqa: E402

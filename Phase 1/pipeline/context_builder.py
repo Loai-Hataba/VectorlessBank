@@ -25,7 +25,7 @@ OUTPUTS : a single string, formatted with clear source labels,
 """
 
 from loaders.record import Record
-from config.settings import MAX_RECORD_CHARS
+from config.settings import MAX_CONTEXT_TOTAL_CHARS, MIN_RECORD_CHARS
 
 # Human-readable labels for each source, used as section headers in
 # the context block so the LLM (and you, when debugging) can see
@@ -42,8 +42,6 @@ def _truncate(text: str, limit: int) -> str:
     """
     Cap one record's rendered text.
 
-    WHY THIS EXISTS
-    ---------------
     Card records are enormous: a single one is ~42,000 characters
     (~10,600 tokens) because the product catalogue has 366 columns and
     every one of them is rendered. Two card records alone therefore
@@ -52,14 +50,9 @@ def _truncate(text: str, limit: int) -> str:
     came to report an annual fee of "EGP 4,500" for a card whose record
     says no such thing.
 
-    Cutting here is better than relying on a bigger window for two
-    reasons: it bounds the prompt no matter how many records arrive,
-    and it keeps the answer-bearing head of each record (name, type,
-    fees, limits) rather than letting the tail push it out of view.
-
-    The cut is marked, so a truncated record is visible when reading
-    the prompt back during debugging, and the generator can tell that
-    the record continues rather than assuming it has seen everything.
+    The cut is marked, so a truncated record is visible when reading the
+    prompt back during debugging, and the generator can tell the record
+    continues rather than assuming it has seen all of it.
     """
     if limit <= 0 or len(text) <= limit:
         return text
@@ -70,9 +63,29 @@ def _truncate(text: str, limit: int) -> str:
     )
 
 
+def _budget_per_record(record_count: int, total_chars: int) -> int:
+    """
+    Share the context budget out between the records being sent.
+
+    Fewer records means each may be shown in more detail. That matters
+    because the useful content of a card record is spread through it --
+    fees near the start, benefits around character 12,000 -- so a cap
+    tight enough for six records throws away half the answer when only
+    two were kept.
+
+    MIN_RECORD_CHARS wins over the budget when the two conflict: a
+    prompt slightly over target is recoverable, whereas records shaved
+    to a few hundred characters answer nothing at all.
+    """
+    if record_count <= 0:
+        return total_chars
+
+    return max(MIN_RECORD_CHARS, total_chars // record_count)
+
+
 def build_context(
     records: list[Record],
-    max_record_chars: int = MAX_RECORD_CHARS,
+    max_total_chars: int = MAX_CONTEXT_TOTAL_CHARS,
 ) -> str:
     """
     Group records by source and render each as a labeled section,
@@ -92,6 +105,8 @@ def build_context(
     if not records:
         return ""
 
+    per_record = _budget_per_record(len(records), max_total_chars)
+
     grouped: dict[str, list[Record]] = {}
     for r in records:
         grouped.setdefault(r.source, []).append(r)
@@ -102,7 +117,7 @@ def build_context(
         block_lines = [f"=== {label} ==="]
         for r in source_records:
             block_lines.append(
-                _truncate(r.display_text, max_record_chars)
+                _truncate(r.display_text, per_record)
             )
             block_lines.append("")  # blank line between records
         sections.append("\n".join(block_lines).strip())

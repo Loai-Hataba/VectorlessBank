@@ -291,6 +291,51 @@ GRADER_MAX_RECORD_CHARS = int(
 # it was willing to call outright relevant is what makes the corrective
 # branch fire when retrieval has actually missed.
 CRAG_MIN_RELEVANT = int(os.environ.get("CRAG_MIN_RELEVANT", "1"))
+
+# ---------------------------------------------------------------------------
+# Output guardrail (Phase 2)
+# ---------------------------------------------------------------------------
+
+# Context shown to the output reviewer. Smaller than the generator's
+# share because this runs on every turn and only has to check claims
+# against the source, not quote it back.
+GUARDRAIL_MAX_CONTEXT_CHARS = int(
+    os.environ.get("GUARDRAIL_MAX_CONTEXT_CHARS", "8000")
+)
+
+# Whether a suspected fabrication blocks the answer or merely annotates
+# it.
+#
+# Default off. The detector is a small local model and will raise false
+# alarms, and withholding a correct answer is its own failure -- the
+# customer gets nothing and cannot tell why. Annotating keeps the answer
+# and flags the doubt. Turn this on where a deployment would rather say
+# nothing than risk a wrong figure.
+GUARDRAIL_BLOCK_FABRICATION = os.environ.get(
+    "GUARDRAIL_BLOCK_FABRICATION", "false"
+).lower() == "true"
+
+# Appended when the answer strays into telling one customer what to do
+# with their money. Softening rather than blocking is deliberate: see
+# the reasoning in pipeline/output_guardrail.py.
+ADVICE_DISCLAIMER = (
+    "This is general product information, not personal financial "
+    "advice. For guidance about your own situation, please speak to a "
+    "Banque Misr representative."
+)
+
+BLOCKED_DISCLOSURE_REPLY = (
+    "I can help with questions about our credit cards, merchant offers "
+    "and campaigns, but I can't share how this assistant is configured "
+    "internally. What would you like to know about our products?"
+)
+
+BLOCKED_FABRICATION_REPLY = (
+    "I don't have enough verified information to answer that "
+    "accurately, and I don't want to give you figures I can't confirm. "
+    "Please check with a Banque Misr representative, or ask me "
+    "something else about our cards, offers or campaigns."
+)
 VALID_SOURCES = frozenset({"cards", "offers", "campaigns"})
 
 # how many turns of raw user input to keep in memory.

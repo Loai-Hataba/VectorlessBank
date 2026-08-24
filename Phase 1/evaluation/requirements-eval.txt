@@ -1,0 +1,51 @@
+# Tier 2 evaluation only. INSTALL THIS IN A SEPARATE ENVIRONMENT.
+#
+#     python -m venv .venv-eval
+#     .venv-eval/Scripts/pip install -r evaluation/requirements-eval.txt
+#
+# WHY NOT IN requirements.txt
+# ---------------------------
+# The application runs on five small dependencies and no ML stack. RAGAS
+# brings langchain, langchain-community, langchain-openai, datasets,
+# pandas, networkx, instructor and more -- roughly 60 packages. Putting
+# that in the app's own environment would quietly hand the project the
+# heavy retrieval infrastructure the Phase 2 blueprint says it must not
+# acquire, and would risk breaking the app on a langchain upgrade that
+# has nothing to do with it.
+#
+# evaluation/eval_generate.py runs in the APP environment (it needs the
+# pipeline). evaluation/eval_answers.py runs HERE (it needs ragas). They
+# communicate only through evaluation/generated_answers.json.
+#
+# WHY EVERY LANGCHAIN PIN IS EXACT
+# --------------------------------
+# A plain `pip install ragas` does not work as of ragas 0.4.3. Pip
+# resolves the langchain 1.x line, and then:
+#
+#   1. ragas/llms/base.py does
+#        from langchain_community.chat_models.vertexai import ChatVertexAI
+#      which langchain-community 0.4.x removed when it was sunset in
+#      favour of standalone integration packages, so `import ragas`
+#      raises ModuleNotFoundError before anything runs.
+#
+#   2. Pinning langchain-community back to 0.3.x then breaks
+#      langchain-openai 1.x, which imports ContextOverflowError from
+#      langchain-core 1.x.
+#
+# The 0.3.x line below is the combination that actually imports. Revisit
+# when ragas drops the vertexai import; until then, do not relax these.
+
+ragas==0.4.3
+
+langchain==0.3.30
+langchain-core==0.3.86
+langchain-community==0.3.31
+langchain-openai==0.3.35
+
+# NOT INSTALLED ON PURPOSE
+# ------------------------
+# sentence-transformers (ragas's "all" extra) would pull a local
+# embedding model. Only RAGAS's answer-relevancy metric needs one, and
+# this project is vectorless by design -- see the docstring in
+# eval_answers.py. Add it only alongside a deliberate team decision, and
+# then run that metric with --with-embeddings.

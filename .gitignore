@@ -26,3 +26,16 @@ env/
 .DS_Store
 Thumbs.db
 .idea/
+
+# Tier 2 evaluation run artifacts.
+#
+# generated_answers.json is the cached output of a ~2 hour pipeline run.
+# It is reproducible, differs on every run, and would otherwise show as
+# a large diff every time anyone evaluates anything. The scripts that
+# produce and consume it are tracked; the results are not.
+Phase 1/evaluation/generated_answers.json
+Phase 1/evaluation/tier2_scores.json
+
+# The separate environment Tier 2 installs into (see
+# Phase 1/evaluation/requirements-eval.txt).
+.venv-eval/

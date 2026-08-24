@@ -4,3 +4,13 @@ requests==2.32.3
 pageindex==0.2.10
 ollama==0.32.15
 typing-extensions>=4.7.0,<5.0
+
+# Tier 2 evaluation (RAGAS) is NOT listed here on purpose. It brings a
+# large langchain/datasets stack that the application must never import.
+# It installs into its own environment:
+#
+#     python -m venv .venv-eval
+#     .venv-eval/Scripts/pip install -r evaluation/requirements-eval.txt
+#
+# See evaluation/requirements-eval.txt for why, and for why its langchain
+# pins are exact.

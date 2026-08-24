@@ -367,6 +367,73 @@ VALID_SOURCES = frozenset({"cards", "offers", "campaigns"})
 MEMORY_RAW_TURNS_KEPT = int(os.environ.get("MEMORY_RAW_TURNS_KEPT", "3"))
 
 # ---------------------------------------------------------------------------
+# Tier 2 evaluation (RAGAS)
+# ---------------------------------------------------------------------------
+#
+# Read only by evaluation/eval_answers.py, never by the running app. They
+# live here anyway because this file is the one place the project keeps
+# knobs, and a judge model hardcoded inside an eval script is exactly the
+# drift this file exists to prevent.
+#
+# NOTE ON ENVIRONMENTS: eval_answers.py runs with ragas installed, which
+# the application deliberately does not have. It can still import this
+# file because this file imports nothing but os and pathlib -- keep it
+# that way, or Tier 2 stops being able to read its own configuration.
+
+# Which model grades answer quality. Defaults to the generator's model so
+# that a machine able to run the pipeline can also run the evaluation,
+# but a judge SHOULD ideally be a different (larger) model than the one
+# being judged -- a model grading its own output shares its blind spots.
+# Point this at something stronger when hardware allows.
+#
+# THIS MODEL NEEDS num_ctx BAKED IN. READ THIS BEFORE TRUSTING A SCORE.
+# ---------------------------------------------------------------------
+# Every other role in this project passes num_ctx explicitly, because
+# Ollama otherwise truncates prompts to ~4096 tokens without saying so
+# (see the long note on OLLAMA_TRAVERSER_NUM_CTX). RAGAS cannot do that:
+# it reaches Ollama through the OpenAI-compatible /v1 endpoint, which has
+# no num_ctx field, and Ollama ignores it if you smuggle it through
+# extra_body. Measured, not assumed.
+#
+# The result is not a lower score but a MISSING one -- the judge stops
+# emitting parseable JSON and the sample is dropped. Cards suffer most,
+# a card record being ~41,000 characters, so the metric quietly stops
+# covering the source the fabrication bug came from.
+#
+# So the window has to live in the model itself:
+#
+#     printf 'FROM llama3.1:8b\nPARAMETER num_ctx 32768\n' > Modelfile.judge
+#     ollama create llama3.1:8b-eval32k -f Modelfile.judge
+#     set RAGAS_JUDGE_MODEL=llama3.1:8b-eval32k
+#
+# eval_answers.py checks for this at startup and warns if it is missing.
+RAGAS_JUDGE_MODEL = os.environ.get(
+    "RAGAS_JUDGE_MODEL",
+    OLLAMA_GENERATOR_MODEL,
+)
+
+# Judging is a classification task, like every other non-generator role.
+RAGAS_JUDGE_TEMPERATURE = float(
+    os.environ.get("RAGAS_JUDGE_TEMPERATURE", "0.0")
+)
+
+# Each metric makes several calls per sample -- faithfulness alone
+# extracts claims and then verifies each one -- so a per-call timeout has
+# to allow for a slow local model without stalling a batch run forever.
+RAGAS_JUDGE_TIMEOUT_SECONDS = int(
+    os.environ.get("RAGAS_JUDGE_TIMEOUT_SECONDS", "300")
+)
+
+# How many samples RAGAS scores concurrently.
+#
+# Deliberately small. Ollama serves a local model essentially serially,
+# so a high worker count does not finish sooner -- it just puts every
+# request in the same queue while multiplying the chance of hitting the
+# timeout above. This is the same lesson as PageIndex's unbounded
+# summary concurrency, which is the one known way to make indexing hang.
+RAGAS_MAX_WORKERS = int(os.environ.get("RAGAS_MAX_WORKERS", "2"))
+
+# ---------------------------------------------------------------------------
 # Flask app settings
 # ---------------------------------------------------------------------------
 FLASK_HOST = os.environ.get("FLASK_HOST", "127.0.0.1")

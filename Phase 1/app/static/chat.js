@@ -76,10 +76,9 @@ function setSending(isSending) {
 function appendUserMessage(text) {
   const wrapper = document.createElement("div");
   wrapper.className = "message user";
-  wrapper.innerHTML = `<div class="bubble">${escapeHtml(text)}</div>`;
+  wrapper.innerHTML = `<div class="message-body"><div class="bubble">${escapeHtml(text)}</div></div>`;
   chatWindow.appendChild(wrapper);
   scrollToBottom();
-}
 
 function appendAssistantMessage(text, sources, isError) {
   const wrapper = document.createElement("div");

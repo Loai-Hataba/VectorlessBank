@@ -4,8 +4,10 @@
   /* Pulled directly from the Banque Misr crest, not a generic bank palette. */
   --maroon: #6e1423;
   --maroon-deep: #55101b;
+  --maroon-bright: #8c1c30;
   --brass: #b08d3f;
   --brass-soft: #f3ecd9;
+  --brass-bright: #d4af5f;
   --parchment: #fbf8f3;
   --panel: #ffffff;
   --line: #e6ddc9;
@@ -19,20 +21,49 @@
 
 * { box-sizing: border-box; }
 
+html, body {
+  height: 100%;
+}
+
 body {
   margin: 0;
   font-family: "Inter", "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
-  background: var(--parchment);
   color: var(--ink);
+
+  /* Page backdrop: a wide, ambient wash behind the chat panel, not
+     inside it -- the panel itself stays a clean working surface. Two
+     soft radial glows in the brand's maroon/brass, plus a faint dot
+     lattice for texture, so it reads as considered rather than flat
+     without competing with the conversation on top of it. */
+  background-color: var(--parchment);
+  background-image:
+    radial-gradient(circle at 12% 8%, rgba(110, 20, 35, 0.10), transparent 38%),
+    radial-gradient(circle at 88% 92%, rgba(176, 141, 63, 0.14), transparent 42%),
+    radial-gradient(circle at 90% 6%, rgba(110, 20, 35, 0.06), transparent 30%),
+    radial-gradient(rgba(176, 141, 63, 0.16) 1px, transparent 1px);
+  background-size: auto, auto, auto, 22px 22px;
+  background-attachment: fixed;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 20px;
 }
 
 .app {
-  max-width: 720px;
+  width: 100%;
+  max-width: 900px;
+  height: min(860px, calc(100vh - 64px));
   margin: 0 auto;
-  height: 100vh;
   display: flex;
   flex-direction: column;
-  background: var(--parchment);
+  background: var(--panel);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow:
+    0 24px 60px -20px rgba(85, 16, 27, 0.35),
+    0 2px 8px rgba(85, 16, 27, 0.08);
+  border: 1px solid rgba(176, 141, 63, 0.25);
 }
 
 /* ---------------------------------------------------------------- */
@@ -106,25 +137,75 @@ body {
 .chat-window {
   flex: 1;
   overflow-y: auto;
-  padding: 22px 20px;
+  padding: 26px 32px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  background:
-    radial-gradient(circle at 100% 0%, rgba(176, 141, 63, 0.06), transparent 45%),
-    var(--parchment);
+  gap: 18px;
+  background: var(--panel);
 }
 
 .message {
   display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.avatar-blob {
+  margin-top: 2px;
 }
 
 .message.user {
   justify-content: flex-end;
 }
 
+.message.user .message-body {
+  align-items: flex-end;
+}
+
+/* ---------------------------------------------------------------- */
+/* Blob avatar                                                       */
+/* ---------------------------------------------------------------- */
+/* An organic, animated gradient mark rather than a static icon --   */
+/* the brand's maroon deepening into brass, so it reads as "alive"   */
+/* and specifically THIS bank's assistant rather than a generic AI   */
+/* sticker. Shown once per assistant message, never for the user.   */
+
+.avatar-blob {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 42% 58% 55% 45% / 45% 42% 58% 55%;
+  background: conic-gradient(
+    from 200deg,
+    var(--maroon-bright),
+    var(--maroon-deep) 30%,
+    var(--brass) 65%,
+    var(--brass-bright) 85%,
+    var(--maroon-bright)
+  );
+  box-shadow: 0 2px 8px rgba(85, 16, 27, 0.25);
+  animation: blob-morph 7s ease-in-out infinite;
+}
+
+@keyframes blob-morph {
+  0%, 100% { border-radius: 42% 58% 55% 45% / 45% 42% 58% 55%; }
+  33% { border-radius: 58% 42% 45% 55% / 55% 58% 42% 45%; }
+  66% { border-radius: 50% 50% 62% 38% / 38% 55% 45% 62%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .avatar-blob {
+    animation: none;
+  }
+}
+
+.message-body {
+  display: flex;
+  flex-direction: column;
+  max-width: 72%;
+}
+
 .bubble {
-  max-width: 78%;
   padding: 13px 16px;
   border-radius: var(--radius);
   font-size: 14.5px;
@@ -291,7 +372,19 @@ body {
 /* Mobile                                                             */
 /* ---------------------------------------------------------------- */
 
-@media (max-width: 480px) {
+@media (max-width: 640px) {
+  body {
+    padding: 0;
+    align-items: stretch;
+  }
+
+  .app {
+    max-width: none;
+    height: 100vh;
+    border-radius: 0;
+    border: none;
+  }
+
   .app-header {
     padding: 14px 16px;
   }
@@ -308,8 +401,8 @@ body {
     padding: 16px 14px;
   }
 
-  .bubble {
-    max-width: 86%;
+  .message-body {
+    max-width: 82%;
   }
 
   .composer {

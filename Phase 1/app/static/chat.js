@@ -84,20 +84,25 @@ function appendUserMessage(text) {
 function appendAssistantMessage(text, sources, isError) {
   const wrapper = document.createElement("div");
   wrapper.className = "message assistant";
-
   const bubble = document.createElement("div");
   bubble.className = "bubble" + (isError ? " error-bubble" : "");
   bubble.textContent = text;
   wrapper.appendChild(bubble);
-
   if (sources && sources.length > 0) {
     const sourcesEl = document.createElement("div");
     sourcesEl.className = "sources";
-    const titles = sources.map((s) => s.title).join(", ");
-    sourcesEl.innerHTML = `<strong>Based on:</strong> ${escapeHtml(titles)}`;
+    const label = document.createElement("span");
+    label.className = "sources-label";
+    label.textContent = "Sourced from";
+    sourcesEl.appendChild(label);
+    sources.forEach((s) => {
+      const stamp = document.createElement("span");
+      stamp.className = "source-stamp";
+      stamp.textContent = s.title;
+      sourcesEl.appendChild(stamp);
+    });
     bubble.appendChild(sourcesEl);
   }
-
   chatWindow.appendChild(wrapper);
   scrollToBottom();
 }

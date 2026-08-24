@@ -38,7 +38,11 @@ present in the retrieved information.
 """
 
 
-def build_user_prompt(question: str, context_text: str) -> str:
+def build_user_prompt(
+    question: str,
+    context_text: str,
+    data_was_insufficient: bool = False,
+) -> str:
     """
     Combine the retrieved context and the user's question into the
     final prompt sent to the LLM.
@@ -47,8 +51,32 @@ def build_user_prompt(question: str, context_text: str) -> str:
     send the question but flag that nothing was retrieved, so the
     LLM leans on rule #1 above (general knowledge only, or say it
     doesn't have specific info).
+
+    data_was_insufficient is set by Corrective RAG when grading -- and
+    then one widened retry -- still failed to turn up a record that
+    genuinely answers the question. There is an important difference
+    between "here is the context" and "here is the closest we found,
+    and it probably is not enough": without being told, the model
+    treats a weak partial match as though it were the answer and writes
+    confidently from it. Saying so explicitly is what lets it decline
+    instead, which is the entire point of the corrective branch.
     """
     if context_text.strip():
+
+        if data_was_insufficient:
+            return (
+                f"Retrieved information (INCOMPLETE -- a wider search "
+                f"still found nothing that directly answers this "
+                f"question; what follows is only the closest match and "
+                f"may not contain the answer):\n"
+                f"{context_text}\n\n"
+                f"---\n"
+                f"Customer question: {question}\n\n"
+                f"If the information above does not actually answer the "
+                f"question, say so plainly. Do not fill the gap with "
+                f"figures, names or terms that are not shown above."
+            )
+
         return (
             f"Retrieved information:\n"
             f"{context_text}\n\n"

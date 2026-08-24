@@ -46,11 +46,13 @@ from llm.llm_client import LLMClient
 from loaders.cards_loader import CardsLoader
 from loaders.offers_loader import OffersLoader
 from loaders.campaigns_loader import CampaignsLoader
-from config.settings import MAX_RESULTS_PER_SOURCE
+from config.settings import MAX_RESULTS_PER_SOURCE, VALID_SOURCES
 from pipeline.pipeline_logger import log_stage
 from pipeline.input_guardrail import InputGuardrail
 from pipeline.query_contextualizer import QueryContextualizer
 from pipeline.router import Router
+from pipeline.grader import RecordGrader
+from pipeline.output_guardrail import OutputGuardrail
 from memory.conversation_memory import ConversationMemory
 
 
@@ -81,6 +83,8 @@ class RagPipeline:
         self.query_contextualizer = QueryContextualizer()
         self.router = Router()
         self.conversation_memory = ConversationMemory()
+        self.grader = RecordGrader()
+        self.output_guardrail = OutputGuardrail()
         self.llm_client = LLMClient()
 
     def answer(self, question: str, session_id: str) -> dict:
@@ -114,21 +118,56 @@ class RagPipeline:
         )
 
         if routing_decision["needs_retrieval"]:
-            retrieved_records = self._retrieve_from(
-                contextualized_question,
+            retrieved_records, data_was_insufficient = self._retrieve_and_grade(
+                question=contextualized_question,
                 sources=routing_decision["sources"],
+                session_id=session_id,
+                turn_id=turn_id,
             )
         else:
+            # The router decided this is general banking knowledge. No
+            # retrieval means nothing to grade, and an empty context is
+            # not "insufficient data" -- it is the correct state.
             retrieved_records = []
+            data_was_insufficient = False
 
         context_text = build_context(retrieved_records)
-        user_prompt = build_user_prompt(contextualized_question, context_text)
+
+        user_prompt = build_user_prompt(
+            contextualized_question,
+            context_text,
+            data_was_insufficient=data_was_insufficient,
+        )
 
         answer_text = self.llm_client.generate(
             system_prompt=SYSTEM_PROMPT,
             user_prompt=user_prompt,
         )
 
+        # Last checkpoint before the customer sees anything.
+        verdict = self.output_guardrail.check(
+            question=contextualized_question,
+            answer=answer_text,
+            context_text=context_text,
+        )
+
+        log_stage(
+            stage="guardrail_output",
+            session_id=session_id,
+            turn_id=turn_id,
+            data={
+                "action": verdict.action,
+                "flags": verdict.flags,
+                "unsupported_claims": verdict.unsupported_claims,
+                "warnings": verdict.warnings,
+            },
+        )
+
+        answer_text = verdict.answer
+
+        # Memory records what the customer was actually told, not the
+        # draft. Otherwise a follow-up would be resolved against an
+        # answer that was blocked or amended before it was sent.
         self.conversation_memory.add_turn(
             session_id=session_id,
             turn_id=turn_id,
@@ -141,6 +180,110 @@ class RagPipeline:
             "retrieved_records": retrieved_records,
             "context_text": context_text,
         }
+
+    def _retrieve_and_grade(
+        self,
+        question: str,
+        sources: list,
+        session_id: str,
+        turn_id: str,
+    ) -> tuple[list, bool]:
+        """
+        Retrieve, grade, and correct once if the grade comes back bad.
+
+        Returns the records worth generating from, and whether the
+        pipeline should tell the generator outright that it does not
+        have enough grounded data.
+
+        THE CORRECTIVE BRANCH
+        ---------------------
+        We drop CRAG's "search the web" arm entirely. Pulling unvetted
+        external content into a banking assistant is not meaningfully
+        different from letting the model invent facts, and it directly
+        contradicts the grounded-answers requirement. Widening the
+        INTERNAL search is the equivalent move here: re-ask the sources
+        the router chose not to consult.
+
+        Exactly one retry, always. That bounds worst-case latency, which
+        matters a great deal when every call is a local model, and it
+        removes any possibility of a correction loop.
+        """
+
+        retrieved = self._retrieve_from(question, sources=sources)
+
+        grade = self.grader.grade(question, retrieved)
+
+        log_stage(
+            stage="crag_grade",
+            session_id=session_id,
+            turn_id=turn_id,
+            data={
+                "retrieved": len(retrieved),
+                "kept": [r.id for r in grade.kept],
+                "verdict": grade.verdict,
+                "relevant": grade.relevant_count,
+                "warnings": grade.warnings,
+            },
+        )
+
+        if not grade.needs_retry:
+            return grade.kept, False
+
+        unsearched = [s for s in VALID_SOURCES if s not in sources]
+
+        if unsearched:
+
+            extra = self._retrieve_from(question, sources=unsearched)
+
+            # Grade the combined set rather than only the new records:
+            # the ranking is only meaningful across everything that is
+            # competing for a place in the context.
+            combined = list(retrieved)
+            seen = {r.id for r in combined}
+
+            for record in extra:
+                if record.id not in seen:
+                    seen.add(record.id)
+                    combined.append(record)
+
+            retry_grade = self.grader.grade(question, combined)
+
+            log_stage(
+                stage="crag_retry",
+                session_id=session_id,
+                turn_id=turn_id,
+                data={
+                    "reason": "no relevant record in the routed sources",
+                    "widened_to": unsearched,
+                    "retrieved": len(combined),
+                    "kept": [r.id for r in retry_grade.kept],
+                    "verdict": retry_grade.verdict,
+                    "warnings": retry_grade.warnings,
+                },
+            )
+
+            if not retry_grade.needs_retry:
+                return retry_grade.kept, False
+
+            # The retry did not find anything relevant either, but it may
+            # still have surfaced better partial matches than the first
+            # pass. Keep whichever set is non-empty, preferring the
+            # wider one, and be honest with the generator either way.
+            return (retry_grade.kept or grade.kept), True
+
+        # Every source was already searched, so there is nothing left to
+        # widen to. Say so rather than retrying the same query.
+        log_stage(
+            stage="crag_retry",
+            session_id=session_id,
+            turn_id=turn_id,
+            data={
+                "reason": "all sources already searched, no retry possible",
+                "kept": [r.id for r in grade.kept],
+            },
+        )
+
+        return grade.kept, True
 
     def _retrieve_from(self, question: str, sources: list) -> list:
 

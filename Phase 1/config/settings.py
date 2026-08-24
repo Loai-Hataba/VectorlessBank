@@ -99,23 +99,11 @@ OLLAMA_GRADER_TEMPERATURE = 0.0
 # COST NOTE: a bigger context window costs memory (KV cache), not
 # accuracy. Keep each role no larger than the biggest prompt it really
 # sends, and lower these on a machine that is short on VRAM.
-OLLAMA_INDEXER_NUM_CTX = int(
-    os.environ.get(
-        "OLLAMA_INDEXER_NUM_CTX",
-        "8192",
-    )
-)
-
+OLLAMA_INDEXER_NUM_CTX = int(os.environ.get("OLLAMA_INDEXER_NUM_CTX","8192",))
 # The largest consumer: an entire tree index in a single prompt. The
 # offers tree needs ~26.5k tokens today, so this leaves headroom for
 # the tree to grow before silent truncation returns.
-OLLAMA_TRAVERSER_NUM_CTX = int(
-    os.environ.get(
-        "OLLAMA_TRAVERSER_NUM_CTX",
-        "32768",
-    )
-)
-
+OLLAMA_TRAVERSER_NUM_CTX = int(os.environ.get("OLLAMA_TRAVERSER_NUM_CTX","32768",))
 # Retrieved records + conversation memory + the answer being written.
 #
 # Raised from 16384 after a measured failure: a nine-record context came
@@ -124,7 +112,7 @@ OLLAMA_TRAVERSER_NUM_CTX = int(
 # answered "the annual fee is EGP 4,500" -- a number that appears
 # nowhere in that card's record. With the full prompt in view the same
 # question is answered correctly and the fee is honestly reported as not
-# stated. See also MAX_RECORD_CHARS below, which attacks the same
+# stated. See also MAX_CONTEXT_TOTAL_CHARS below, which attacks the same
 # problem from the other end.
 OLLAMA_GENERATOR_NUM_CTX = int(
     os.environ.get(
@@ -133,48 +121,46 @@ OLLAMA_GENERATOR_NUM_CTX = int(
     )
 )
 
-# Phase 2 roles. These are classification/judgement calls over a handful
-# of records or a short question, not whole-tree reads, so they need far
-# less room than the traverser.
+# ---- Phase 2 roles ----
+#
+# Sizes below are per role because the roles read genuinely different
+# amounts. Where the two workloads disagreed on a number during the
+# merge, the owner of the role won: whoever built a component measured
+# what it actually sends, and copying a neighbouring role's number is
+# how the original truncation bug happened.
+
+# Router and summarizer see a short question, a source list and a small
+# conversation window. Partner A sized and tested these.
 OLLAMA_ROUTER_NUM_CTX = int(
-    os.environ.get(
-        "OLLAMA_ROUTER_NUM_CTX",
-        "8192",
-    )
+    os.environ.get("OLLAMA_ROUTER_NUM_CTX", "4096")
 )
 
 OLLAMA_SUMMARIZER_NUM_CTX = int(
-    os.environ.get(
-        "OLLAMA_SUMMARIZER_NUM_CTX",
-        "8192",
-    )
+    os.environ.get("OLLAMA_SUMMARIZER_NUM_CTX", "4096")
 )
 
+# Reads one raw user message and classifies it. The smallest prompt in
+# the pipeline.
 OLLAMA_GUARDRAIL_INPUT_NUM_CTX = int(
-    os.environ.get(
-        "OLLAMA_GUARDRAIL_INPUT_NUM_CTX",
-        "8192",
-    )
+    os.environ.get("OLLAMA_GUARDRAIL_INPUT_NUM_CTX", "2048")
 )
 
-# Sees the generated answer plus the whole context it is checked
-# against, so it needs the same room as the generator -- see the note on
-# GUARDRAIL_MAX_CONTEXT_CHARS about why a verifier must not be shown
-# less than the writer was.
+# NOT 4096. The output guardrail reads the generated answer AND the
+# whole context it must be checked against, so it needs the same room as
+# the generator itself. At 4096 it sees a fraction of the evidence and
+# reports the generator's legitimate, correctly-sourced claims as
+# fabrication -- which is exactly what happened when its context was
+# capped too low. See the note on GUARDRAIL_MAX_CONTEXT_CHARS.
 OLLAMA_GUARDRAIL_OUTPUT_NUM_CTX = int(
-    os.environ.get(
-        "OLLAMA_GUARDRAIL_OUTPUT_NUM_CTX",
-        "32768",
-    )
+    os.environ.get("OLLAMA_GUARDRAIL_OUTPUT_NUM_CTX", "32768")
 )
 
-# Sees every candidate record, but as compact GRADER_MAX_RECORD_CHARS
-# renderings rather than full display_text.
+# Sees every candidate record before filtering -- up to three sources'
+# worth -- as compact GRADER_MAX_RECORD_CHARS renderings. Fifteen
+# candidates at 1200 characters is already ~4,500 tokens before the
+# prompt, so 8192 leaves too little headroom.
 OLLAMA_GRADER_NUM_CTX = int(
-    os.environ.get(
-        "OLLAMA_GRADER_NUM_CTX",
-        "16384",
-    )
+    os.environ.get("OLLAMA_GRADER_NUM_CTX", "16384")
 )
 
 # Fallback for any role that has no explicit entry, so that adding a

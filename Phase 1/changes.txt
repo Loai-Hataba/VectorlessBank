@@ -1,0 +1,2225 @@
+"""
+pipeline/context_builder.py
+
+WHAT THIS FILE DOES
+--------------------
+Takes the Records returned by the retrievers (a list of structured
+objects) and turns them into ONE plain-text block that gets inserted
+into the prompt sent to the LLM.
+
+WHY IT EXISTS AS ITS OWN STEP
+--------------------------------
+Retrieval (finding the right records) and context formatting
+(turning records into LLM-readable text) are two different concerns.
+Keeping them separate means:
+  - You can change HOW retrieved data is displayed to the LLM
+    (e.g. add source labels, reorder, truncate long records) without
+    touching any retriever.
+  - Phase 2's re-ranker/CRAG steps can filter or reorder the list of
+    Records BEFORE it reaches this function, and this function
+    doesn't need to know or care that happened.
+
+INPUTS  : list[Record] -- already-retrieved, already-ranked records
+OUTPUTS : a single string, formatted with clear source labels,
+          ready to drop into the user prompt
+"""
+
+from loaders.record import Record
+from config.settings import MAX_RECORD_CHARS
+
+# Human-readable labels for each source, used as section headers in
+# the context block so the LLM (and you, when debugging) can see
+# where each piece of information came from.
+SOURCE_LABELS = {
+    "cards": "CREDIT CARD PRODUCTS",
+    "offers_installment": "MERCHANT INSTALLMENT OFFERS",
+    "offers_discount": "MERCHANT DISCOUNT OFFERS",
+    "campaigns": "CAMPAIGNS",
+}
+
+
+def _truncate(text: str, limit: int) -> str:
+    """
+    Cap one record's rendered text.
+
+    WHY THIS EXISTS
+    ---------------
+    Card records are enormous: a single one is ~42,000 characters
+    (~10,600 tokens) because the product catalogue has 366 columns and
+    every one of them is rendered. Two card records alone therefore
+    overflow any sane generator context window, and an overflowing
+    prompt is silently truncated by Ollama -- which is how the model
+    came to report an annual fee of "EGP 4,500" for a card whose record
+    says no such thing.
+
+    Cutting here is better than relying on a bigger window for two
+    reasons: it bounds the prompt no matter how many records arrive,
+    and it keeps the answer-bearing head of each record (name, type,
+    fees, limits) rather than letting the tail push it out of view.
+
+    The cut is marked, so a truncated record is visible when reading
+    the prompt back during debugging, and the generator can tell that
+    the record continues rather than assuming it has seen everything.
+    """
+    if limit <= 0 or len(text) <= limit:
+        return text
+
+    return (
+        text[:limit].rstrip()
+        + f"\n[... record truncated at {limit} characters ...]"
+    )
+
+
+def build_context(
+    records: list[Record],
+    max_record_chars: int = MAX_RECORD_CHARS,
+) -> str:
+    """
+    Group records by source and render each as a labeled section,
+    e.g.:
+
+        === CREDIT CARD PRODUCTS ===
+        Card: VISA INFINITE
+        - Minimum limit: ...
+        ...
+
+        === CAMPAIGNS ===
+        Campaign: Egypt Air July 2026 Installment Campaign
+        ...
+
+    Returns an empty string if no records were retrieved.
+    """
+    if not records:
+        return ""
+
+    grouped: dict[str, list[Record]] = {}
+    for r in records:
+        grouped.setdefault(r.source, []).append(r)
+
+    sections = []
+    for source, source_records in grouped.items():
+        label = SOURCE_LABELS.get(source, source.upper())
+        block_lines = [f"=== {label} ==="]
+        for r in source_records:
+            block_lines.append(
+                _truncate(r.display_text, max_record_chars)
+            )
+            block_lines.append("")  # blank line between records
+        sections.append("\n".join(block_lines).strip())
+
+    return "\n\n".join(sections)
+
+--------------------------------------------------------------------------------------------------
+
+"""
+config/settings.py
+
+WHAT THIS FILE DOES
+--------------------
+This is the ONE file that holds every "knob" you might want to turn:
+which Ollama model to use, where the data files live, how many
+retrieved records to show the LLM, etc.
+
+WHY IT EXISTS
+-------------
+If these values were scattered across the codebase (a model name typed
+inside llm_client.py, a file path typed inside cards_loader.py, ...),
+changing your setup later would mean hunting through many files.
+Instead, every other module imports FROM here and never hardcodes
+these values itself. Want to switch from "llama3.1" to "qwen2.5"?
+Change ONE line, here.
+
+INPUTS  : none (this file only reads environment variables, with safe defaults)
+OUTPUTS : constants that other modules import, e.g.
+          from config.settings import OLLAMA_MODEL, DATA_DIR
+"""
+
+import os
+from pathlib import Path
+
+# ---------------------------------------------------------------------------
+# Project paths
+# ---------------------------------------------------------------------------
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+RAW_DATA_DIR = PROJECT_ROOT / "data" / "raw"
+PROCESSED_DATA_DIR = PROJECT_ROOT / "data" / "processed"
+
+# Markdown rendered from Records, fed to PageIndex. Also handy to open
+# by hand when a generated tree looks wrong.
+MARKDOWN_DIR = PROJECT_ROOT / "data" / "markdown"
+LOGS_DIR = PROJECT_ROOT / "logs"
+PIPELINE_LOG_PATH = LOGS_DIR / "pipeline.jsonl"
+
+CARDS_XLSX_PATH = RAW_DATA_DIR / "20260306_Product_Catalog_new_version.xlsx"
+OFFERS_XLSX_PATH = RAW_DATA_DIR / "Feb_2026_offers_-_Wave_1_-_Call_Center.xlsx"
+CAMPAIGNS_JSON_PATH = RAW_DATA_DIR / "campaigns_clean.json"
+
+# ============================================================
+# LLM / OLLAMA CONFIGURATION
+# ============================================================
+OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
+
+# ------------------------------------------------------------
+# Models
+# ------------------------------------------------------------
+OLLAMA_INDEXER_MODEL   = "llama3.1:8b"
+OLLAMA_TRAVERSER_MODEL = "llama3.1:8b"
+OLLAMA_GENERATOR_MODEL = "llama3.1:8b"
+OLLAMA_ROUTER_MODEL = "llama3.1:8b"
+OLLAMA_SUMMARIZER_MODEL = "llama3.1:8b"
+OLLAMA_GUARDRAIL_INPUT_MODEL = "llama3.1:8b"
+OLLAMA_GUARDRAIL_OUTPUT_MODEL = "llama3.1:8b"
+OLLAMA_GRADER_MODEL = "llama3.1:8b"
+
+# ------------------------------------------------------------
+# Temperature
+# ------------------------------------------------------------
+OLLAMA_INDEXER_TEMPERATURE = 0.0
+OLLAMA_TRAVERSER_TEMPERATURE = 0.0
+OLLAMA_GENERATOR_TEMPERATURE = 0.2
+OLLAMA_ROUTER_TEMPERATURE = 0.0
+OLLAMA_SUMMARIZER_TEMPERATURE = 0.0
+OLLAMA_GUARDRAIL_INPUT_TEMPERATURE = 0.0
+OLLAMA_GUARDRAIL_OUTPUT_TEMPERATURE = 0.0
+OLLAMA_GRADER_TEMPERATURE = 0.0
+
+# ------------------------------------------------------------
+# Context window (num_ctx)
+# ------------------------------------------------------------
+# WHY THIS EXISTS
+# ---------------
+# Ollama does NOT default to a model's full context window. Unless
+# num_ctx is passed explicitly it uses a small default (4096 tokens for
+# llama3.1:8b) and then SILENTLY TRUNCATES anything longer -- no error,
+# no warning, just a shorter prompt than the one that was sent.
+#
+# This was a real, measured Phase 1 bug, not a theoretical risk. The
+# traversal prompt for the offers tree is ~26,500 tokens; Ollama
+# reported prompt_eval_count=4095, i.e. it discarded ~85% of the tree
+# index. The truncation also cut the tail of the traversal system
+# prompt, so the model stopped returning the required
+# {"selected_node_ids": [...]} shape and emitted invented node IDs.
+# The visible symptom was that EVERY question retrieved the same few
+# records, because the model was never shown the part of the tree that
+# made one question different from another.
+#
+# These are per-role for the same reason models and temperatures are:
+# the roles have genuinely different input sizes. The traverser reads a
+# whole flattened tree; the indexer sees one record at a time.
+#
+# COST NOTE: a bigger context window costs memory (KV cache), not
+# accuracy. Keep each role no larger than the biggest prompt it really
+# sends, and lower these on a machine that is short on VRAM.
+OLLAMA_INDEXER_NUM_CTX = int(os.environ.get("OLLAMA_INDEXER_NUM_CTX","8192",))
+# The largest consumer: an entire tree index in a single prompt. The
+# offers tree needs ~26.5k tokens today, so this leaves headroom for
+# the tree to grow before silent truncation returns.
+OLLAMA_TRAVERSER_NUM_CTX = int(os.environ.get("OLLAMA_TRAVERSER_NUM_CTX","32768",))
+# Retrieved records + conversation memory + the answer being written.
+#
+# Raised from 16384 after a measured failure: a nine-record context came
+# to ~20,955 tokens (a single card record is ~10,600 tokens of
+# display_text), so the prompt was truncated at 16,383 and the model
+# answered "the annual fee is EGP 4,500" -- a number that appears
+# nowhere in that card's record. With the full prompt in view the same
+# question is answered correctly and the fee is honestly reported as not
+# stated. See also MAX_CONTEXT_TOTAL_CHARS below, which attacks the same
+# problem from the other end.
+OLLAMA_GENERATOR_NUM_CTX = int(
+    os.environ.get(
+        "OLLAMA_GENERATOR_NUM_CTX",
+        "32768",
+    )
+)
+
+# ---- Phase 2 roles ----
+#
+# Sizes below are per role because the roles read genuinely different
+# amounts. Where the two workloads disagreed on a number during the
+# merge, the owner of the role won: whoever built a component measured
+# what it actually sends, and copying a neighbouring role's number is
+# how the original truncation bug happened.
+
+# Router and summarizer see a short question, a source list and a small
+# conversation window. Partner A sized and tested these.
+OLLAMA_ROUTER_NUM_CTX = int(
+    os.environ.get("OLLAMA_ROUTER_NUM_CTX", "4096")
+)
+
+OLLAMA_SUMMARIZER_NUM_CTX = int(
+    os.environ.get("OLLAMA_SUMMARIZER_NUM_CTX", "4096")
+)
+
+# Reads one raw user message and classifies it. The smallest prompt in
+# the pipeline.
+OLLAMA_GUARDRAIL_INPUT_NUM_CTX = int(
+    os.environ.get("OLLAMA_GUARDRAIL_INPUT_NUM_CTX", "2048")
+)
+
+# NOT 4096. The output guardrail reads the generated answer AND the
+# whole context it must be checked against, so it needs the same room as
+# the generator itself. At 4096 it sees a fraction of the evidence and
+# reports the generator's legitimate, correctly-sourced claims as
+# fabrication -- which is exactly what happened when its context was
+# capped too low. See the note on GUARDRAIL_MAX_CONTEXT_CHARS.
+OLLAMA_GUARDRAIL_OUTPUT_NUM_CTX = int(
+    os.environ.get("OLLAMA_GUARDRAIL_OUTPUT_NUM_CTX", "32768")
+)
+
+# Sees every candidate record before filtering -- up to three sources'
+# worth -- as compact GRADER_MAX_RECORD_CHARS renderings. Fifteen
+# candidates at 1200 characters is already ~4,500 tokens before the
+# prompt, so 8192 leaves too little headroom.
+OLLAMA_GRADER_NUM_CTX = int(
+    os.environ.get("OLLAMA_GRADER_NUM_CTX", "16384")
+)
+
+# Fallback for any role that has no explicit entry, so that adding a
+# role to MODEL_BY_ROLE without adding one here degrades to a usable
+# default instead of raising KeyError at construction time.
+OLLAMA_DEFAULT_NUM_CTX = int(
+    os.environ.get(
+        "OLLAMA_DEFAULT_NUM_CTX",
+        "8192",
+    )
+)
+
+# ---------------------------------------------------------------------------
+# LLM request timeout
+# ---------------------------------------------------------------------------
+
+OLLAMA_TIMEOUT_SECONDS = int(
+    os.environ.get(
+        "OLLAMA_TIMEOUT_SECONDS",
+        "300",
+    )
+)
+
+# ---------------------------------------------------------------------------
+# PageIndex tree indexing
+# ---------------------------------------------------------------------------
+
+# Whether PageIndex should write an LLM-generated summary onto each node.
+# "no" makes indexing fully deterministic and requires no LLM at all;
+# "yes" gives the traversal LLM more to go on, at one call per node.
+PAGEINDEX_ADD_NODE_SUMMARY = os.environ.get(
+    "PAGEINDEX_ADD_NODE_SUMMARY",
+    "no",
+)
+
+# PageIndex talks to models through LiteLLM, whose naming is
+# "provider/model" -- so the local Ollama model needs an "ollama/" prefix.
+PAGEINDEX_SUMMARY_MODEL = os.environ.get(
+    "PAGEINDEX_SUMMARY_MODEL",
+    f"ollama/{OLLAMA_INDEXER_MODEL}",
+)
+
+# Nodes shorter than this many tokens are not sent to the LLM at all --
+# PageIndex uses their own text as the summary.
+PAGEINDEX_SUMMARY_TOKEN_THRESHOLD = int(
+    os.environ.get(
+        "PAGEINDEX_SUMMARY_TOKEN_THRESHOLD",
+        "200",
+    )
+)
+
+# Every node summary is shown to the traversal LLM, so an un-truncated
+# summary of a 366-column card record would blow up the traversal prompt.
+PAGEINDEX_MAX_SUMMARY_CHARS = int(
+    os.environ.get(
+        "PAGEINDEX_MAX_SUMMARY_CHARS",
+        "400",
+    )
+)
+
+# ---------------------------------------------------------------------------
+# Retrieval settings
+# ---------------------------------------------------------------------------
+# Max records each retriever is allowed to return per query. Keeps the
+# context we send to the LLM small and focused instead of dumping
+# everything.
+MAX_RESULTS_PER_SOURCE = int(os.environ.get("MAX_RESULTS_PER_SOURCE", "5"))
+
+# Total characters of record text allowed in one generator context,
+# shared out between however many records were kept.
+#
+# WHY A SHARED BUDGET AND NOT A FIXED PER-RECORD CAP
+# --------------------------------------------------
+# The first version of this capped every record at a flat 6000
+# characters. That bounded the prompt correctly but silently cost
+# answers: a card record is ~42,000 characters, its fees sit around
+# character 2,000 and its BENEFITS sit around character 12,000, so a
+# 6000 cap kept the fees and threw the benefits away. The output
+# guardrail then flagged perfectly good benefit claims as unsupported,
+# because in the context it was shown they genuinely were.
+#
+# A shared budget adapts instead: when re-ranking keeps two records they
+# get ~30,000 characters each and nothing important is lost, and when it
+# keeps six they get ~10,000 each and the prompt is still bounded. The
+# guarantee that matters -- the total never overflows the window -- is
+# preserved either way, because it is now stated directly rather than
+# inferred from a per-record guess.
+#
+# 60,000 characters is roughly 15,000 tokens, which sits comfortably in
+# the generator's 32,768-token window alongside conversation memory and
+# the answer being written.
+MAX_CONTEXT_TOTAL_CHARS = int(
+    os.environ.get("MAX_CONTEXT_TOTAL_CHARS", "60000")
+)
+
+# Floor on any single record's share, so that a large result set cannot
+# shrink every record into uselessness. If the floor and the record
+# count together exceed the budget, the budget gives way -- a prompt
+# slightly over target is recoverable, whereas records cut to a few
+# hundred characters answer nothing.
+MIN_RECORD_CHARS = int(os.environ.get("MIN_RECORD_CHARS", "4000"))
+
+# ---------------------------------------------------------------------------
+# Corrective RAG / re-ranking (Phase 2)
+# ---------------------------------------------------------------------------
+
+# How many records survive re-ranking and reach the generator.
+#
+# This is the second bound on prompt size, alongside MAX_RECORD_CHARS:
+# that one caps how big a record may be, this one caps how many there
+# may be. Six is enough to answer questions that genuinely span several
+# products while still leaving room for conversation memory.
+RERANK_TOP_K = int(os.environ.get("RERANK_TOP_K", "6"))
+
+# Characters of a record shown to the grader.
+#
+# Much smaller than MAX_RECORD_CHARS because the tasks differ: the
+# generator must quote exact fees and terms, while the grader only has
+# to recognise what a record is about. Sending full records here would
+# recreate the context overflow this project has already been bitten by
+# twice, and would make the grading call as slow as generation.
+GRADER_MAX_RECORD_CHARS = int(
+    os.environ.get("GRADER_MAX_RECORD_CHARS", "1200")
+)
+
+# How many records must be graded fully "relevant" before CRAG accepts
+# the retrieval as Correct. Below this, the Incorrect branch fires and
+# the search is widened once.
+#
+# 1 rather than 0 on purpose. "At least one partially relevant record"
+# is too weak a bar for a local model, which will nearly always find
+# something loosely on-topic -- asked about Carrefour it happily rates a
+# different merchant's installment offer as useful. Requiring a record
+# it was willing to call outright relevant is what makes the corrective
+# branch fire when retrieval has actually missed.
+CRAG_MIN_RELEVANT = int(os.environ.get("CRAG_MIN_RELEVANT", "1"))
+
+# ---------------------------------------------------------------------------
+# Output guardrail (Phase 2)
+# ---------------------------------------------------------------------------
+
+# Context shown to the output reviewer.
+#
+# THIS MUST NOT BE SMALLER THAN THE GENERATOR'S BUDGET.
+#
+# It was 8000 on the reasoning that a reviewer only has to check claims,
+# not quote them, so it could work from less. That reasoning is wrong,
+# and measurably so: a verifier shown less than the writer saw will
+# report the writer's legitimate content as unsupported, every single
+# time that content happens to sit past the verifier's cut.
+#
+# It produced exactly that. An answer citing the VISA INFINITE's lounge
+# access, Booking.com discount and London Cab cashback -- all verbatim
+# from the record, all around character 12,000 -- was flagged as
+# fabrication, because the reviewer's 8000-character view stopped short
+# of them. The check was not wrong about what it could see; it was
+# shown the wrong thing.
+#
+# Tying it to the generator's own budget makes the guarantee structural
+# rather than a number that has to be remembered twice.
+GUARDRAIL_MAX_CONTEXT_CHARS = int(
+    os.environ.get(
+        "GUARDRAIL_MAX_CONTEXT_CHARS",
+        str(MAX_CONTEXT_TOTAL_CHARS),
+    )
+)
+
+# Whether a suspected fabrication blocks the answer or merely annotates
+# it.
+#
+# Default off. The detector is a small local model and will raise false
+# alarms, and withholding a correct answer is its own failure -- the
+# customer gets nothing and cannot tell why. Annotating keeps the answer
+# and flags the doubt. Turn this on where a deployment would rather say
+# nothing than risk a wrong figure.
+GUARDRAIL_BLOCK_FABRICATION = os.environ.get(
+    "GUARDRAIL_BLOCK_FABRICATION", "false"
+).lower() == "true"
+
+# Appended when the answer strays into telling one customer what to do
+# with their money. Softening rather than blocking is deliberate: see
+# the reasoning in pipeline/output_guardrail.py.
+ADVICE_DISCLAIMER = (
+    "This is general product information, not personal financial "
+    "advice. For guidance about your own situation, please speak to a "
+    "Banque Misr representative."
+)
+
+BLOCKED_DISCLOSURE_REPLY = (
+    "I can help with questions about our credit cards, merchant offers "
+    "and campaigns, but I can't share how this assistant is configured "
+    "internally. What would you like to know about our products?"
+)
+
+BLOCKED_FABRICATION_REPLY = (
+    "I don't have enough verified information to answer that "
+    "accurately, and I don't want to give you figures I can't confirm. "
+    "Please check with a Banque Misr representative, or ask me "
+    "something else about our cards, offers or campaigns."
+)
+VALID_SOURCES = frozenset({"cards", "offers", "campaigns"})
+
+# how many turns of raw user input to keep in memory.
+MEMORY_RAW_TURNS_KEPT = int(os.environ.get("MEMORY_RAW_TURNS_KEPT", "3"))
+
+# ---------------------------------------------------------------------------
+# Flask app settings
+# ---------------------------------------------------------------------------
+FLASK_HOST = os.environ.get("FLASK_HOST", "127.0.0.1")
+FLASK_PORT = int(os.environ.get("FLASK_PORT", "5000"))
+FLASK_DEBUG = os.environ.get("FLASK_DEBUG", "true").lower() == "true"
+
+
+------------------------------------------------------------------------------------------------------------------------------
+
+"""
+evaluation/eval_retrieval.py
+
+TIER 1 EVALUATION -- retrieval correctness, deterministic.
+
+WHAT THIS MEASURES
+------------------
+Whether retrieval returns the records a question actually needs, scored
+as precision / recall / F1 of record IDs against a hand-labelled gold
+set. No LLM judge is involved anywhere in this file.
+
+WHY THIS IS POSSIBLE HERE
+-------------------------
+Records have stable, human-readable IDs (card_303,
+offer_installment_4_Carrefour), so "the right answer" can be written
+down by hand. A vector-database RAG system cannot do this cheaply --
+you would need embeddings just to define which chunk was correct. It is
+a direct benefit of the vectorless, structured-record architecture and
+worth using rather than reaching for an LLM judge on a question that is
+objectively checkable.
+
+WHY IT DELIBERATELY DOES NOT GENERATE ANSWERS
+---------------------------------------------
+A full question takes roughly 165-205 seconds end to end, most of it
+generation, so a 40-case suite with answers is hours. Retrieval-only
+keeps the everyday feedback loop short enough to actually be run.
+Answer quality is Tier 2's job (RAGAS), run as a batch.
+
+USAGE
+-----
+    python evaluation/eval_retrieval.py                      # everything
+    python evaluation/eval_retrieval.py --limit 6            # first 6 cases
+    python evaluation/eval_retrieval.py --category single_source_cards
+    python evaluation/eval_retrieval.py --case offers_001
+    python evaluation/eval_retrieval.py --grade              # + CRAG grader
+    python evaluation/eval_retrieval.py --json out.json      # machine readable
+
+--grade runs the Step 1 grader over what retrieval returned, so the
+same suite reports whether grading improves precision and whether the
+corrective branch fires where it should.
+"""
+
+import argparse
+import json
+import sys
+import time
+from pathlib import Path
+
+# Allow running as `python evaluation/eval_retrieval.py` from the project root.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from config.settings import MAX_RESULTS_PER_SOURCE          # noqa: E402
+from loaders.cards_loader import CardsLoader                # noqa: E402
+from loaders.offers_loader import OffersLoader              # noqa: E402
+from loaders.campaigns_loader import CampaignsLoader        # noqa: E402
+from retrievers.tree_retriever import TreeRetriever         # noqa: E402
+
+TESTSET_PATH = Path(__file__).resolve().parent / "testset.json"
+
+
+def prf(retrieved: set, gold: set) -> tuple[float, float, float]:
+    """
+    Precision, recall, F1 for one case.
+
+    The empty-gold case is not a division-by-zero nuisance, it is a real
+    test: "unanswerable" cases assert that nothing relevant exists.
+    Retrieving nothing there is a perfect score; retrieving something is
+    a precision failure with recall undefined, reported as 1.0 so it
+    does not drag the recall average down for a question that had
+    nothing to recall.
+    """
+    if not gold:
+        return (1.0 if not retrieved else 0.0), 1.0, (1.0 if not retrieved else 0.0)
+
+    if not retrieved:
+        return 0.0, 0.0, 0.0
+
+    hits = len(retrieved & gold)
+    precision = hits / len(retrieved)
+    recall = hits / len(gold)
+
+    if precision + recall == 0:
+        return 0.0, 0.0, 0.0
+
+    return precision, recall, 2 * precision * recall / (precision + recall)
+
+
+def load_cases(args) -> list:
+    data = json.loads(TESTSET_PATH.read_text(encoding="utf-8"))
+    cases = data["cases"]
+
+    # Cases with needs_retrieval=false test the router, not retrieval,
+    # and scoring them here would measure the wrong component.
+    cases = [c for c in cases if c.get("needs_retrieval", True)]
+
+    if args.category:
+        cases = [c for c in cases if c.get("category") == args.category]
+
+    if args.case:
+        cases = [c for c in cases if c.get("id") == args.case]
+
+    if args.limit:
+        cases = cases[: args.limit]
+
+    return cases
+
+
+def build_retrievers() -> dict:
+    print("Loading records and tree indexes...")
+    return {
+        "cards": TreeRetriever(source="cards", records=CardsLoader().load()),
+        "offers": TreeRetriever(source="offers", records=OffersLoader().load()),
+        "campaigns": TreeRetriever(
+            source="campaigns", records=CampaignsLoader().load()
+        ),
+    }
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--limit", type=int)
+    parser.add_argument("--category")
+    parser.add_argument("--case")
+    parser.add_argument("--grade", action="store_true",
+                        help="also run the CRAG grader over the results")
+    parser.add_argument("--json", dest="json_out")
+    args = parser.parse_args()
+
+    cases = load_cases(args)
+
+    if not cases:
+        print("No cases matched.")
+        raise SystemExit(1)
+
+    retrievers = build_retrievers()
+
+    grader = None
+    if args.grade:
+        from pipeline.grader import RecordGrader
+        grader = RecordGrader()
+
+    print(f"Scoring {len(cases)} case(s). "
+          f"Grader: {'on' if grader else 'off'}\n")
+
+    results = []
+    started = time.time()
+
+    for index, case in enumerate(cases, start=1):
+
+        # Follow-ups are scored on the resolved question. Until the
+        # contextualizer exists, using the raw text would measure a
+        # component nobody has built yet.
+        question = case.get("standalone_question") or case["question"]
+        gold = set(case.get("gold_record_ids", []))
+
+        # No router yet, so fan out to every source, exactly as the
+        # pipeline does today. When the router lands, swap this for the
+        # sources it selects -- the numbers here are the before.
+        retrieved_records = []
+        seen = set()
+
+        t0 = time.time()
+
+        for source, retriever in retrievers.items():
+            for record in retriever.retrieve(
+                question, top_k=MAX_RESULTS_PER_SOURCE
+            ):
+                if record.id not in seen:
+                    seen.add(record.id)
+                    retrieved_records.append(record)
+
+        retrieval_seconds = time.time() - t0
+
+        retrieved = {r.id for r in retrieved_records}
+        precision, recall, f1 = prf(retrieved, gold)
+
+        row = {
+            "id": case["id"],
+            "category": case["category"],
+            "question": question,
+            "gold": sorted(gold),
+            "retrieved": sorted(retrieved),
+            "missed": sorted(gold - retrieved),
+            "precision": round(precision, 3),
+            "recall": round(recall, 3),
+            "f1": round(f1, 3),
+            "seconds": round(retrieval_seconds, 1),
+        }
+
+        if grader is not None:
+            g0 = time.time()
+            graded = grader.grade(question, retrieved_records)
+            kept = {r.id for r in graded.kept}
+            gp, gr, gf = prf(kept, gold)
+
+            row["graded"] = {
+                "kept": sorted(kept),
+                "verdict": graded.verdict,
+                "needs_retry": graded.needs_retry,
+                "precision": round(gp, 3),
+                "recall": round(gr, 3),
+                "f1": round(gf, 3),
+                "seconds": round(time.time() - g0, 1),
+                "warnings": graded.warnings,
+            }
+
+            # An unanswerable case is only handled correctly if the
+            # grader ALSO asks for a retry -- silently keeping junk is
+            # the failure this component exists to prevent.
+            if not gold:
+                row["graded"]["correctly_flagged"] = graded.needs_retry
+
+        results.append(row)
+
+        status = "OK  " if recall == 1.0 else "MISS"
+        line = (f"[{index:>2}/{len(cases)}] {status} {case['id']:<12} "
+                f"P={precision:.2f} R={recall:.2f} "
+                f"({retrieval_seconds:.0f}s)")
+
+        if grader is not None:
+            g = row["graded"]
+            line += (f"  |  graded P={g['precision']:.2f} "
+                     f"R={g['recall']:.2f} {g['verdict']}"
+                     f"{' RETRY' if g['needs_retry'] else ''}")
+
+        print(line)
+
+        if row["missed"]:
+            print(f"           missed: {', '.join(row['missed'])}")
+
+    # ---------------------------------------------------------------
+    # Summary
+    # ---------------------------------------------------------------
+
+    def mean(key, source=None):
+        values = [
+            (r[source][key] if source else r[key])
+            for r in results
+            if (source is None or source in r)
+        ]
+        return sum(values) / len(values) if values else 0.0
+
+    print()
+    print("=" * 62)
+    print(f"{len(results)} cases in {time.time() - started:.0f}s")
+    print("-" * 62)
+    print(f"  retrieval   P={mean('precision'):.3f}  "
+          f"R={mean('recall'):.3f}  F1={mean('f1'):.3f}")
+
+    if grader is not None:
+        print(f"  + grading   P={mean('precision', 'graded'):.3f}  "
+              f"R={mean('recall', 'graded'):.3f}  "
+              f"F1={mean('f1', 'graded'):.3f}")
+        retries = sum(1 for r in results if r["graded"]["needs_retry"])
+        print(f"  retries requested: {retries}/{len(results)}")
+
+    perfect = sum(1 for r in results if r["recall"] == 1.0)
+    print(f"  full recall: {perfect}/{len(results)} cases")
+
+    print("-" * 62)
+    by_category: dict[str, list] = {}
+    for r in results:
+        by_category.setdefault(r["category"], []).append(r)
+
+    for category, rows in sorted(by_category.items()):
+        rec = sum(r["recall"] for r in rows) / len(rows)
+        print(f"  {category:<26} R={rec:.3f}  ({len(rows)} cases)")
+    print("=" * 62)
+
+    if args.json_out:
+        Path(args.json_out).write_text(
+            json.dumps(results, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        print(f"\nWrote {args.json_out}")
+
+
+if __name__ == "__main__":
+    main()
+
+
+------------------------------------------------------------------------------------------------------------------------------
+
+"""
+pipeline/grader.py
+
+WHAT THIS FILE DOES
+-------------------
+Judges the records that retrieval returned, in one LLM call, and
+produces two things from that single judgement:
+
+    1. a relevance label per record   -> Corrective RAG's filter
+    2. an ordering over the records   -> Re-ranking
+
+    retrieved records
+        |
+        v
+    RecordGrader.grade(question, records)
+        |
+        +-- label each record: relevant / partially_relevant / irrelevant
+        +-- rank each record:  1 = most useful
+        |
+        v
+    GradeResult
+        .kept      -> relevant+partial, rank-ordered, capped at top_k
+        .verdict   -> "correct" | "incorrect"
+        .needs_retry
+
+WHY GRADING AND RE-RANKING SHARE ONE CALL
+-----------------------------------------
+Both need the model to answer the same underlying question -- "how
+useful is this record for answering this question?" -- and merely
+consume the answer differently: a categorical filter versus an
+ordering. Asking twice would double the latency of the slowest part of
+the pipeline for no accuracy gain. This is deliberately one
+implementation satisfying two separate requirements.
+
+WHY THE LABELS ARE CATEGORICAL AND NOT A NUMERIC SCORE
+------------------------------------------------------
+A small local model produces a reliable three-way label far more
+readily than a well-calibrated 0..1 score. The branch logic only needs
+"retry or don't", and the finer ordering is what `rank` is for.
+
+MODEL PROPOSES, PYTHON DISPOSES
+-------------------------------
+Nothing the model returns is trusted as-is. IDs are whitelisted against
+the records actually retrieved, labels are clamped to the enum, ranks
+are coerced to integers, and the branch decision is computed in Python
+from the cleaned labels -- never read from the model's own words. This
+is the same discipline the traverser uses for node IDs.
+
+INPUTS  : question (str), list[Record]
+OUTPUTS : GradeResult
+
+REQUIRES: Ollama running locally with the grader model pulled.
+"""
+
+import json
+from dataclasses import dataclass, field
+
+from config.settings import (
+    RERANK_TOP_K,
+    GRADER_MAX_RECORD_CHARS,
+    CRAG_MIN_RELEVANT,
+)
+from llm.llm_client import LLMClient
+
+
+RELEVANT = "relevant"
+PARTIALLY_RELEVANT = "partially_relevant"
+IRRELEVANT = "irrelevant"
+
+VALID_RELEVANCE = frozenset({RELEVANT, PARTIALLY_RELEVANT, IRRELEVANT})
+
+# Where an unusable label or a missing judgement lands.
+#
+# Deliberately NOT "irrelevant": a record the model failed to mention,
+# or labelled with a word we don't recognise, has not been judged
+# irrelevant -- it has not been judged at all. Dropping it would let a
+# lazy or malformed reply silently delete the record that holds the
+# answer. Treating it as partial keeps it available but ranks it last,
+# so a confidently-relevant record always outranks it.
+FALLBACK_RELEVANCE = PARTIALLY_RELEVANT
+
+# Rank assigned when the model gives none. Sorts after any real rank.
+UNRANKED = 10_000
+
+
+GRADER_SYSTEM_PROMPT = """
+You are a retrieval evaluator for a retail banking assistant.
+
+You are given a customer question and a numbered list of records that
+were retrieved for it. For EACH record you must decide two things:
+
+1. relevance -- one of exactly these three strings:
+   - "relevant"            the record can answer the question, or a
+                           substantial part of it
+   - "partially_relevant"  the record is about the right subject but
+                           does not directly answer the question
+   - "irrelevant"          the record is about something else
+
+2. rank -- an integer starting at 1, where 1 is the record most useful
+   for answering the question. Every record gets a distinct rank.
+
+RULES:
+
+1. Return ONLY valid JSON. No prose, no explanation outside the JSON.
+2. Judge every record you are given, exactly once.
+3. Use the record's "id" exactly as it was given to you.
+4. Do not invent records or IDs.
+5. Do not answer the customer's question. You are only grading.
+6. A record that merely mentions a word from the question is not
+   relevant. Ask whether it actually answers what was asked.
+
+THE NAMED-ENTITY RULE (the most common grading mistake):
+
+If the question names a specific merchant, card, or campaign, then a
+record about a DIFFERENT merchant, card, or campaign is "irrelevant" --
+even when it is the same KIND of product.
+
+Being the same kind of thing is not the same as being the thing asked
+about. "Same category" is not relevance.
+
+Worked example. Question: "What installment offers are available at
+Carrefour?" Retrieved records:
+
+  - Vevian installment offer   -> "irrelevant"  (different merchant)
+  - Mahgoub installment offer  -> "irrelevant"  (different merchant)
+  - Carrefour installment offer-> "relevant"    (this is the merchant
+                                                 that was asked about)
+
+Marking the Vevian record "relevant" there would be wrong: the customer
+asked about Carrefour, and nothing in the Vevian record tells them
+anything about Carrefour.
+
+It is correct and useful to mark EVERY record "irrelevant" when none of
+them is about the thing that was asked about. Do not stretch to find
+something relevant.
+
+Required output shape:
+
+{
+  "records": [
+    {"id": "card_303", "relevance": "relevant", "rank": 1},
+    {"id": "offer_installment_4_Carrefour", "relevance": "irrelevant", "rank": 2}
+  ]
+}
+"""
+
+
+@dataclass
+class GradedRecord:
+    """One record plus the judgement made about it."""
+
+    record: object
+    relevance: str
+    rank: int
+
+    @property
+    def is_useful(self) -> bool:
+        return self.relevance in (RELEVANT, PARTIALLY_RELEVANT)
+
+
+@dataclass
+class GradeResult:
+    """
+    Outcome of grading one batch of retrieved records.
+
+    kept     : the records worth generating from, best first, capped
+    graded   : every candidate with its final (cleaned) judgement
+    verdict  : "correct" if anything useful survived, else "incorrect"
+    warnings : anything the model got wrong that Python had to repair,
+               worth logging and worth reading when tuning the prompt
+    """
+
+    kept: list = field(default_factory=list)
+    graded: list = field(default_factory=list)
+    verdict: str = "incorrect"
+    warnings: list = field(default_factory=list)
+
+    @property
+    def needs_retry(self) -> bool:
+        """
+        CRAG's 'Incorrect' branch: nothing useful came back, so the
+        caller should widen the search once. The retry cap itself lives
+        with the caller, not here -- this object only reports what it
+        found.
+        """
+        return self.verdict == "incorrect"
+
+    @property
+    def relevant_count(self) -> int:
+        return sum(1 for g in self.graded if g.relevance == RELEVANT)
+
+
+class RecordGrader:
+
+    def __init__(
+        self,
+        llm_client: LLMClient | None = None,
+        top_k: int = RERANK_TOP_K,
+        max_record_chars: int = GRADER_MAX_RECORD_CHARS,
+        min_relevant: int = CRAG_MIN_RELEVANT,
+    ):
+        self.llm_client = (
+            llm_client
+            or LLMClient(role="grader")
+        )
+
+        self.top_k = top_k
+        self.max_record_chars = max_record_chars
+        self.min_relevant = min_relevant
+
+    def grade(self, question: str, records: list) -> GradeResult:
+
+        records = list(records)
+
+        # Zero records retrieved is already CRAG's "Incorrect" branch.
+        # There is nothing to ask the model about, so don't spend a call
+        # discovering that.
+        if not records:
+            return GradeResult(
+                kept=[],
+                graded=[],
+                verdict="incorrect",
+                warnings=["no records were retrieved"],
+            )
+
+        by_id = {str(r.id): r for r in records}
+
+        raw = self.llm_client.generate(
+            system_prompt=GRADER_SYSTEM_PROMPT,
+            user_prompt=self._build_user_prompt(question, records),
+            response_format="json",
+        )
+
+        judgements, warnings = self._parse(raw, by_id)
+
+        graded = self._apply_judgements(by_id, judgements, warnings)
+
+        # Sort by the model's ordering, but only among records that
+        # survived the filter. Python decides the branch, not the model.
+        useful = [g for g in graded if g.is_useful]
+        useful.sort(key=lambda g: g.rank)
+
+        kept = [g.record for g in useful[: self.top_k]]
+
+        # The verdict asks a stricter question than "did anything
+        # survive the filter". Partially-relevant records are worth
+        # generating from if that is all there is, but they are not
+        # evidence that retrieval succeeded -- a local model will label
+        # almost anything on-topic as partial. Requiring records it
+        # called outright relevant is what makes the corrective branch
+        # fire on a genuine miss.
+        #
+        # Note that `kept` stays populated either way: if the retry also
+        # comes back empty, the caller still has these to fall back on
+        # rather than nothing at all.
+        relevant_count = sum(
+            1 for g in graded if g.relevance == RELEVANT
+        )
+
+        verdict = (
+            "correct"
+            if relevant_count >= self.min_relevant
+            else "incorrect"
+        )
+
+        return GradeResult(
+            kept=kept,
+            graded=graded,
+            verdict=verdict,
+            warnings=warnings,
+        )
+
+    def _build_user_prompt(self, question: str, records: list) -> str:
+
+        blocks = []
+
+        for record in records:
+
+            text = str(record.display_text or "").strip()
+
+            if len(text) > self.max_record_chars:
+                text = text[: self.max_record_chars].rstrip() + " [...]"
+
+            blocks.append(
+                f"- id: {record.id}\n"
+                f"  source: {record.source}\n"
+                f"  title: {record.title}\n"
+                f"  content: {text}"
+            )
+
+        records_text = "\n\n".join(blocks)
+
+        return (
+            f"CUSTOMER QUESTION:\n{question}\n\n"
+            f"RETRIEVED RECORDS ({len(records)}):\n{records_text}\n\n"
+            f"Grade every record above. Return ONLY the JSON object."
+        )
+
+    @staticmethod
+    def _parse(raw: str, by_id: dict) -> tuple[dict, list]:
+        """
+        Turn the model's reply into {record_id: (relevance, rank)}.
+
+        Every failure mode here is expected rather than exceptional:
+        small models wrap JSON in prose, invent IDs, and use labels they
+        were not offered. Each one is repaired and recorded instead of
+        raising, because a malformed grade should degrade retrieval
+        quality, not take down the request.
+        """
+
+        warnings = []
+
+        text = (raw or "").strip()
+
+        if not text:
+            return {}, ["grader returned an empty response"]
+
+        try:
+            data = json.loads(text)
+
+        except json.JSONDecodeError:
+            # Last resort: pull the outermost {...} out of surrounding
+            # prose. Cheaper than a retry and usually enough.
+            start = text.find("{")
+            end = text.rfind("}")
+
+            if start == -1 or end == -1 or end <= start:
+                return {}, ["grader returned unparseable JSON"]
+
+            try:
+                data = json.loads(text[start : end + 1])
+                warnings.append("grader JSON needed prose stripped")
+
+            except json.JSONDecodeError:
+                return {}, ["grader returned unparseable JSON"]
+
+        if not isinstance(data, dict):
+            return {}, ["grader JSON was not an object"]
+
+        rows = data.get("records")
+
+        if not isinstance(rows, list):
+            return {}, ["grader JSON had no 'records' list"]
+
+        judgements = {}
+
+        for row in rows:
+
+            if not isinstance(row, dict):
+                warnings.append("skipped a non-object entry in 'records'")
+                continue
+
+            record_id = str(row.get("id", "")).strip()
+
+            if record_id not in by_id:
+                # The whitelist. An ID we did not retrieve cannot be
+                # graded into the answer, however confident the model is.
+                warnings.append(
+                    f"discarded unknown record id '{record_id}'"
+                )
+                continue
+
+            if record_id in judgements:
+                warnings.append(
+                    f"duplicate judgement for '{record_id}', kept first"
+                )
+                continue
+
+            relevance = str(row.get("relevance", "")).strip().lower()
+
+            if relevance not in VALID_RELEVANCE:
+                warnings.append(
+                    f"record '{record_id}' had unusable relevance "
+                    f"'{relevance}', treated as {FALLBACK_RELEVANCE}"
+                )
+                relevance = FALLBACK_RELEVANCE
+
+            try:
+                rank = int(row.get("rank", UNRANKED))
+
+            except (TypeError, ValueError):
+                warnings.append(
+                    f"record '{record_id}' had a non-integer rank"
+                )
+                rank = UNRANKED
+
+            judgements[record_id] = (relevance, rank)
+
+        return judgements, warnings
+
+    @staticmethod
+    def _apply_judgements(
+        by_id: dict,
+        judgements: dict,
+        warnings: list,
+    ) -> list:
+        """
+        Attach a judgement to every retrieved record, including the ones
+        the model never mentioned.
+        """
+
+        graded = []
+
+        for record_id, record in by_id.items():
+
+            if record_id in judgements:
+                relevance, rank = judgements[record_id]
+
+            else:
+                warnings.append(
+                    f"grader did not judge '{record_id}', "
+                    f"treated as {FALLBACK_RELEVANCE}"
+                )
+                relevance, rank = FALLBACK_RELEVANCE, UNRANKED
+
+            graded.append(
+                GradedRecord(
+                    record=record,
+                    relevance=relevance,
+                    rank=rank,
+                )
+            )
+
+        return graded
+
+------------------------------------------------------------------------------------------------------------------------------
+
+"""
+pipeline/output_guardrail.py
+
+WHAT THIS FILE DOES
+-------------------
+The last checkpoint before an answer reaches the customer. It reads the
+generated answer together with the context it was supposed to be built
+from, and reports three things:
+
+    1. fabrication      -- claims not supported by the context
+    2. personal advice  -- telling this customer what to do with money
+    3. disclosure       -- leaking system prompts or internal machinery
+
+    answer + context
+         |
+         v
+    OutputGuardrail.check(...)
+         |
+         v
+    GuardrailVerdict
+        .action     "allow" | "annotate" | "block"
+        .answer     the text to actually send
+        .flags      what tripped, for the log
+
+WHY IT BLOCKS SOME THINGS AND ONLY ANNOTATES OTHERS
+---------------------------------------------------
+The three failures are not equally severe, so treating them alike would
+be wrong in both directions.
+
+Disclosure is blocked outright: there is no legitimate version of
+handing over the system prompt.
+
+Personalised financial advice is annotated, not blocked. Explaining
+products is the assistant's job, and the line between "this card has
+lower fees" and "you should get this card" is genuinely blurry.
+Hard-blocking would refuse useful, legitimate answers -- the failure
+mode of an over-eager guardrail is a product nobody wants to use. A
+disclaimer keeps the answer and adds the caveat.
+
+Fabrication is the interesting one, and it is annotated rather than
+blocked BY DEFAULT because the detector is a small local model that
+will produce false positives, and silently withholding a correct answer
+is its own kind of failure. Set GUARDRAIL_BLOCK_FABRICATION to block
+instead where the deployment prefers silence to risk.
+
+WHY A CHEAP CLASSIFICATION CALL
+-------------------------------
+This runs on every turn, so it must be cheap. The task is closer to the
+indexer's categorisation job than to the generator's writing job: read
+two texts, answer a fixed set of questions, emit short JSON. That is
+what small models are reliably good at.
+
+MODEL PROPOSES, PYTHON DISPOSES
+-------------------------------
+The model returns booleans and short quotes. Python decides the action,
+applies the disclaimer, and chooses the replacement text. The model
+never writes the customer-facing outcome, only the assessment.
+
+INPUTS  : question (str), answer (str), context_text (str)
+OUTPUTS : GuardrailVerdict
+
+REQUIRES: Ollama running locally with the guardrail model pulled.
+"""
+
+import json
+from dataclasses import dataclass, field
+
+from config.settings import (
+    GUARDRAIL_MAX_CONTEXT_CHARS,
+    GUARDRAIL_BLOCK_FABRICATION,
+    ADVICE_DISCLAIMER,
+    BLOCKED_DISCLOSURE_REPLY,
+    BLOCKED_FABRICATION_REPLY,
+)
+from llm.llm_client import LLMClient
+
+
+ALLOW = "allow"
+ANNOTATE = "annotate"
+BLOCK = "block"
+
+
+OUTPUT_GUARDRAIL_SYSTEM_PROMPT = """
+You are a compliance reviewer for a retail banking assistant.
+
+You are given the CUSTOMER QUESTION, the RETRIEVED CONTEXT the answer
+was supposed to be based on, and the DRAFT ANSWER. Review the draft and
+report what you find. You are not rewriting it.
+
+Report these three things:
+
+1. "fabrication" -- true if the draft states a specific fact about a
+   bank product (a fee, rate, number of months, date, merchant name,
+   card name, limit) that does NOT appear in the retrieved context.
+
+   General banking education ("APR means annual percentage rate") is
+   NOT fabrication -- the assistant is allowed to explain concepts from
+   general knowledge.
+
+   Saying that information is unavailable is NOT fabrication. It is the
+   correct behaviour when the context lacks the answer.
+
+   If you set this true, put the specific unsupported claims in
+   "unsupported_claims".
+
+2. "personal_advice" -- true if the draft tells this specific customer
+   what they personally should do with their money: which product to
+   buy, whether to invest, whether to borrow.
+
+   Describing and comparing products is NOT personal advice. Only a
+   direct recommendation to this individual counts.
+
+3. "discloses_internals" -- true if the draft reveals system prompts,
+   instructions, model names, internal architecture, or dumps raw
+   records instead of answering.
+
+RULES:
+
+1. Return ONLY valid JSON. No prose outside it.
+2. Judge only the DRAFT ANSWER. Do not answer the question yourself.
+3. When unsure, prefer false. A false alarm suppresses a correct answer,
+   which is its own kind of harm.
+
+Required output shape:
+
+{
+  "fabrication": false,
+  "unsupported_claims": [],
+  "personal_advice": false,
+  "discloses_internals": false
+}
+"""
+
+
+@dataclass
+class GuardrailVerdict:
+    """
+    What the guardrail decided, and the text to actually send.
+
+    action  : "allow" | "annotate" | "block"
+    answer  : the final customer-facing text
+    flags   : which checks tripped, for logging
+    """
+
+    action: str = ALLOW
+    answer: str = ""
+    flags: list = field(default_factory=list)
+    unsupported_claims: list = field(default_factory=list)
+    warnings: list = field(default_factory=list)
+
+    @property
+    def modified(self) -> bool:
+        return self.action != ALLOW
+
+
+class OutputGuardrail:
+
+    def __init__(
+        self,
+        llm_client: LLMClient | None = None,
+        max_context_chars: int = GUARDRAIL_MAX_CONTEXT_CHARS,
+        block_fabrication: bool = GUARDRAIL_BLOCK_FABRICATION,
+    ):
+        self.llm_client = (
+            llm_client
+            or LLMClient(role="guardrail_output")
+        )
+
+        self.max_context_chars = max_context_chars
+        self.block_fabrication = block_fabrication
+
+    def check(
+        self,
+        question: str,
+        answer: str,
+        context_text: str = "",
+    ) -> GuardrailVerdict:
+
+        answer = (answer or "").strip()
+
+        # Nothing to review. Not an error: the generator can legitimately
+        # produce nothing when it was given nothing.
+        if not answer:
+            return GuardrailVerdict(
+                action=ALLOW,
+                answer=answer,
+                warnings=["empty answer, nothing to check"],
+            )
+
+        raw = self.llm_client.generate(
+            system_prompt=OUTPUT_GUARDRAIL_SYSTEM_PROMPT,
+            user_prompt=self._build_user_prompt(
+                question, answer, context_text
+            ),
+            response_format="json",
+        )
+
+        report, warnings = self._parse(raw)
+
+        return self._decide(answer, report, warnings)
+
+    def _build_user_prompt(
+        self,
+        question: str,
+        answer: str,
+        context_text: str,
+    ) -> str:
+
+        context_text = (context_text or "").strip()
+
+        if not context_text:
+            context_text = "(no records were retrieved for this question)"
+
+        elif len(context_text) > self.max_context_chars:
+            # The guardrail is a per-turn cost, so it gets a smaller
+            # slice than the generator. Truncating is safe in the
+            # direction that matters: a shorter context makes the
+            # reviewer MORE likely to call something unsupported, and a
+            # false fabrication alarm only adds a disclaimer, whereas
+            # an overflowing prompt would be silently cut by Ollama at
+            # an arbitrary point.
+            context_text = (
+                context_text[: self.max_context_chars].rstrip()
+                + "\n[... context truncated ...]"
+            )
+
+        return (
+            f"CUSTOMER QUESTION:\n{question}\n\n"
+            f"RETRIEVED CONTEXT:\n{context_text}\n\n"
+            f"DRAFT ANSWER:\n{answer}\n\n"
+            f"Review the draft answer. Return ONLY the JSON object."
+        )
+
+    @staticmethod
+    def _parse(raw: str) -> tuple[dict, list]:
+        """
+        Parse the reviewer's JSON.
+
+        An unreadable review must not block the answer. The guardrail is
+        a safety net, and a net that fails closed on its own parse error
+        would take down the product every time the reviewer stutters --
+        so a failure here degrades to "allow" plus a warning that says
+        the check did not really run.
+        """
+
+        warnings = []
+        text = (raw or "").strip()
+
+        if not text:
+            return {}, ["guardrail returned an empty response"]
+
+        try:
+            data = json.loads(text)
+
+        except json.JSONDecodeError:
+            start = text.find("{")
+            end = text.rfind("}")
+
+            if start == -1 or end == -1 or end <= start:
+                return {}, ["guardrail returned unparseable JSON"]
+
+            try:
+                data = json.loads(text[start : end + 1])
+                warnings.append("guardrail JSON needed prose stripped")
+
+            except json.JSONDecodeError:
+                return {}, ["guardrail returned unparseable JSON"]
+
+        if not isinstance(data, dict):
+            return {}, ["guardrail JSON was not an object"]
+
+        def as_bool(key: str) -> bool:
+            value = data.get(key, False)
+
+            if isinstance(value, bool):
+                return value
+
+            # Small models answer "true"/"yes" as often as true.
+            if isinstance(value, str):
+                return value.strip().lower() in ("true", "yes", "1")
+
+            if isinstance(value, (int, float)):
+                return bool(value)
+
+            warnings.append(f"guardrail '{key}' was not a boolean")
+            return False
+
+        claims = data.get("unsupported_claims", [])
+
+        if not isinstance(claims, list):
+            claims = [str(claims)]
+
+        return (
+            {
+                "fabrication": as_bool("fabrication"),
+                "personal_advice": as_bool("personal_advice"),
+                "discloses_internals": as_bool("discloses_internals"),
+                "unsupported_claims": [str(c) for c in claims][:5],
+            },
+            warnings,
+        )
+
+    def _decide(
+        self,
+        answer: str,
+        report: dict,
+        warnings: list,
+    ) -> GuardrailVerdict:
+        """
+        Turn the assessment into an action. Python decides, not the model.
+
+        Severity order is deliberate: disclosure outranks fabrication,
+        which outranks advice, because the replacement text for the more
+        severe finding should win rather than being appended to.
+        """
+
+        if not report:
+            return GuardrailVerdict(
+                action=ALLOW,
+                answer=answer,
+                flags=[],
+                warnings=warnings + ["guardrail check did not run"],
+            )
+
+        flags = [
+            name
+            for name in ("fabrication", "personal_advice",
+                         "discloses_internals")
+            if report.get(name)
+        ]
+
+        claims = report.get("unsupported_claims", [])
+
+        if report.get("discloses_internals"):
+            return GuardrailVerdict(
+                action=BLOCK,
+                answer=BLOCKED_DISCLOSURE_REPLY,
+                flags=flags,
+                unsupported_claims=claims,
+                warnings=warnings,
+            )
+
+        if report.get("fabrication") and self.block_fabrication:
+            return GuardrailVerdict(
+                action=BLOCK,
+                answer=BLOCKED_FABRICATION_REPLY,
+                flags=flags,
+                unsupported_claims=claims,
+                warnings=warnings,
+            )
+
+        annotations = []
+
+        if report.get("fabrication"):
+            annotations.append(
+                "Please double-check any figures above with the bank, "
+                "as they may not be fully supported by our records."
+            )
+
+        if report.get("personal_advice"):
+            annotations.append(ADVICE_DISCLAIMER)
+
+        if annotations:
+            return GuardrailVerdict(
+                action=ANNOTATE,
+                answer=answer + "\n\n" + "\n\n".join(annotations),
+                flags=flags,
+                unsupported_claims=claims,
+                warnings=warnings,
+            )
+
+        return GuardrailVerdict(
+            action=ALLOW,
+            answer=answer,
+            flags=[],
+            unsupported_claims=claims,
+            warnings=warnings,
+        )
+
+
+------------------------------------------------------------------------------------------------------------------------------
+
+"""
+pipeline/prompt_templates.py
+
+WHAT THIS FILE DOES
+--------------------
+Holds every piece of TEXT we send to the LLM: the system prompt
+(instructions/persona) and the user prompt template (how we present
+retrieved context + the question). No logic lives here, only strings
+and simple string-formatting functions.
+
+WHY IT EXISTS AS ITS OWN FILE
+--------------------------------
+Prompt wording is something you'll tune constantly while testing --
+tightening instructions, adding guardrail language, adjusting tone.
+Keeping it separate from rag_pipeline.py means you (or your partner)
+can edit HOW the bot talks without touching the code that decides
+WHAT data it sees. It also makes it trivial to compare two prompt
+versions side by side later, or A/B test them in the evaluation
+pipeline (Phase 2).
+
+INPUTS  : retrieved context (str), conversation/question (str)
+OUTPUTS : ready-to-send prompt strings
+"""
+
+SYSTEM_PROMPT = """You are a helpful assistant for Banque Misr's retail banking \
+customers. You answer questions about credit cards, merchant offers \
+(installments and discounts), and ongoing campaigns.
+
+Rules you must follow:
+1. Base your answer ONLY on the "Retrieved information" provided below, \
+except for general banking knowledge questions (e.g. "what is APR", \
+"how does a credit card work") where you may use your own knowledge.
+2. If the retrieved information does not contain the answer, say so \
+clearly instead of guessing or making up numbers, fees, or dates.
+3. Be concise and direct. Use bullet points for lists of terms/fees.
+4. Never invent a card name, merchant name, fee, or date that is not \
+present in the retrieved information.
+"""
+
+
+def build_user_prompt(
+    question: str,
+    context_text: str,
+    data_was_insufficient: bool = False,
+) -> str:
+    """
+    Combine the retrieved context and the user's question into the
+    final prompt sent to the LLM.
+
+    If context_text is empty (no source matched anything), we still
+    send the question but flag that nothing was retrieved, so the
+    LLM leans on rule #1 above (general knowledge only, or say it
+    doesn't have specific info).
+
+    data_was_insufficient is set by Corrective RAG when grading -- and
+    then one widened retry -- still failed to turn up a record that
+    genuinely answers the question. There is an important difference
+    between "here is the context" and "here is the closest we found,
+    and it probably is not enough": without being told, the model
+    treats a weak partial match as though it were the answer and writes
+    confidently from it. Saying so explicitly is what lets it decline
+    instead, which is the entire point of the corrective branch.
+    """
+    if context_text.strip():
+
+        if data_was_insufficient:
+            return (
+                f"Retrieved information (INCOMPLETE -- a wider search "
+                f"still found nothing that directly answers this "
+                f"question; what follows is only the closest match and "
+                f"may not contain the answer):\n"
+                f"{context_text}\n\n"
+                f"---\n"
+                f"Customer question: {question}\n\n"
+                f"If the information above does not actually answer the "
+                f"question, say so plainly. Do not fill the gap with "
+                f"figures, names or terms that are not shown above."
+            )
+
+        return (
+            f"Retrieved information:\n"
+            f"{context_text}\n\n"
+            f"---\n"
+            f"Customer question: {question}"
+        )
+    else:
+        return (
+            f"Retrieved information: (nothing matched this question in our "
+            f"cards, offers, or campaigns data)\n\n"
+            f"---\n"
+            f"Customer question: {question}"
+        )
+
+
+
+
+------------------------------------------------------------------------------------------------------------------------------
+
+"""
+pipeline/rag_pipeline.py
+
+WHAT THIS FILE DOES
+--------------------
+This is the "conductor" that runs one full question-answering turn:
+
+    user question
+        -> ask EVERY retriever for its best matches (cards, offers, campaigns)
+        -> merge the results into one context block
+        -> build the final prompt
+        -> call the LLM
+        -> return the answer (plus the retrieved records, for transparency)
+
+WHY PHASE 1's FLOW IS "DUMB" ON PURPOSE
+-------------------------------------------
+Notice this pipeline does NOT decide which source is relevant --
+it queries ALL of them, every time, and lets the keyword scores
+naturally return nothing (empty list) from sources that don't match.
+That's intentional: Phase 1's goal is a working, understandable
+baseline. Phase 2 replaces "ask everyone" with an `agent/router.py`
+step that uses the LLM to decide which source(s) to query -- but
+that step will simply choose WHICH of these same retrievers to call.
+Nothing here needs to be rewritten for that upgrade, only the
+decision of which retrievers to invoke.
+
+WHY WE RETURN retrieved_records TOO, NOT JUST THE ANSWER
+------------------------------------------------------------
+Returning what was actually retrieved (not just the final text) is
+essential for you to debug/understand the system, and it's exactly
+what Phase 2's pipeline_logger.py will start writing to a log file
+automatically.
+
+INPUTS  : question (str) -- the user's message
+OUTPUTS : a dict: {
+            "answer": str,
+            "retrieved_records": list[Record],
+            "context_text": str,
+          }
+"""
+
+from retrievers.tree_retriever import TreeRetriever
+from pipeline.context_builder import build_context
+from pipeline.prompt_templates import SYSTEM_PROMPT, build_user_prompt
+from llm.llm_client import LLMClient
+from loaders.cards_loader import CardsLoader
+from loaders.offers_loader import OffersLoader
+from loaders.campaigns_loader import CampaignsLoader
+from config.settings import MAX_RESULTS_PER_SOURCE, VALID_SOURCES
+from pipeline.pipeline_logger import log_stage
+from pipeline.input_guardrail import InputGuardrail
+from pipeline.query_contextualizer import QueryContextualizer
+from pipeline.router import Router
+from pipeline.grader import RecordGrader
+from pipeline.output_guardrail import OutputGuardrail
+from memory.conversation_memory import ConversationMemory
+
+
+class RagPipeline:
+    def __init__(self):
+        # The tree index only stores record IDs, so the actual Records
+        # still have to be loaded here for the retrievers to resolve
+        # those IDs back into answerable content.
+        self.cards_records = CardsLoader().load()
+        self.offers_records = OffersLoader().load()
+        self.campaigns_records = CampaignsLoader().load()
+
+        self.retrievers = {
+            "cards": TreeRetriever(
+                source="cards",
+                records=self.cards_records,
+            ),
+            "offers": TreeRetriever(
+                source="offers",
+                records=self.offers_records,
+            ),
+            "campaigns": TreeRetriever(
+                source="campaigns",
+                records=self.campaigns_records,
+            ),
+        }
+        self.input_guardrail = InputGuardrail()
+        self.query_contextualizer = QueryContextualizer()
+        self.router = Router()
+        self.conversation_memory = ConversationMemory()
+        self.grader = RecordGrader()
+        self.output_guardrail = OutputGuardrail()
+        self.llm_client = LLMClient()
+
+    def answer(self, question: str, session_id: str) -> dict:
+        turn_id = self.conversation_memory.next_turn_id(session_id)
+        guardrail_result = self.input_guardrail.check(
+            raw_message=question,
+            session_id=session_id,
+            turn_id=turn_id,
+        )
+
+        if guardrail_result["blocked"]:
+            return {
+                "answer": guardrail_result["user_facing_message"],
+                "retrieved_records": [],
+                "context_text": "",
+            }
+
+        memory_context = self.conversation_memory.get_context(session_id)
+
+        contextualized_question = self.query_contextualizer.contextualize(
+            raw_question=question,
+            memory_context=memory_context,
+            session_id=session_id,
+            turn_id=turn_id,
+        )
+
+        routing_decision = self.router.route(
+            contextualized_question=contextualized_question,
+            session_id=session_id,
+            turn_id=turn_id,
+        )
+
+        if routing_decision["needs_retrieval"]:
+            retrieved_records, data_was_insufficient = self._retrieve_and_grade(
+                question=contextualized_question,
+                sources=routing_decision["sources"],
+                session_id=session_id,
+                turn_id=turn_id,
+            )
+        else:
+            # The router decided this is general banking knowledge. No
+            # retrieval means nothing to grade, and an empty context is
+            # not "insufficient data" -- it is the correct state.
+            retrieved_records = []
+            data_was_insufficient = False
+
+        context_text = build_context(retrieved_records)
+
+        user_prompt = build_user_prompt(
+            contextualized_question,
+            context_text,
+            data_was_insufficient=data_was_insufficient,
+        )
+
+        answer_text = self.llm_client.generate(
+            system_prompt=SYSTEM_PROMPT,
+            user_prompt=user_prompt,
+        )
+
+        # Last checkpoint before the customer sees anything.
+        verdict = self.output_guardrail.check(
+            question=contextualized_question,
+            answer=answer_text,
+            context_text=context_text,
+        )
+
+        log_stage(
+            stage="guardrail_output",
+            session_id=session_id,
+            turn_id=turn_id,
+            data={
+                "action": verdict.action,
+                "flags": verdict.flags,
+                "unsupported_claims": verdict.unsupported_claims,
+                "warnings": verdict.warnings,
+            },
+        )
+
+        answer_text = verdict.answer
+
+        # Memory records what the customer was actually told, not the
+        # draft. Otherwise a follow-up would be resolved against an
+        # answer that was blocked or amended before it was sent.
+        self.conversation_memory.add_turn(
+            session_id=session_id,
+            turn_id=turn_id,
+            user_message=question,
+            assistant_message=answer_text,
+        )
+
+        return {
+            "answer": answer_text,
+            "retrieved_records": retrieved_records,
+            "context_text": context_text,
+        }
+
+    def _retrieve_and_grade(
+        self,
+        question: str,
+        sources: list,
+        session_id: str,
+        turn_id: str,
+    ) -> tuple[list, bool]:
+        """
+        Retrieve, grade, and correct once if the grade comes back bad.
+
+        Returns the records worth generating from, and whether the
+        pipeline should tell the generator outright that it does not
+        have enough grounded data.
+
+        THE CORRECTIVE BRANCH
+        ---------------------
+        We drop CRAG's "search the web" arm entirely. Pulling unvetted
+        external content into a banking assistant is not meaningfully
+        different from letting the model invent facts, and it directly
+        contradicts the grounded-answers requirement. Widening the
+        INTERNAL search is the equivalent move here: re-ask the sources
+        the router chose not to consult.
+
+        Exactly one retry, always. That bounds worst-case latency, which
+        matters a great deal when every call is a local model, and it
+        removes any possibility of a correction loop.
+        """
+
+        retrieved = self._retrieve_from(question, sources=sources)
+
+        grade = self.grader.grade(question, retrieved)
+
+        log_stage(
+            stage="crag_grade",
+            session_id=session_id,
+            turn_id=turn_id,
+            data={
+                "retrieved": len(retrieved),
+                "kept": [r.id for r in grade.kept],
+                "verdict": grade.verdict,
+                "relevant": grade.relevant_count,
+                "warnings": grade.warnings,
+            },
+        )
+
+        if not grade.needs_retry:
+            return grade.kept, False
+
+        unsearched = [s for s in VALID_SOURCES if s not in sources]
+
+        if unsearched:
+
+            extra = self._retrieve_from(question, sources=unsearched)
+
+            # Grade the combined set rather than only the new records:
+            # the ranking is only meaningful across everything that is
+            # competing for a place in the context.
+            combined = list(retrieved)
+            seen = {r.id for r in combined}
+
+            for record in extra:
+                if record.id not in seen:
+                    seen.add(record.id)
+                    combined.append(record)
+
+            retry_grade = self.grader.grade(question, combined)
+
+            log_stage(
+                stage="crag_retry",
+                session_id=session_id,
+                turn_id=turn_id,
+                data={
+                    "reason": "no relevant record in the routed sources",
+                    "widened_to": unsearched,
+                    "retrieved": len(combined),
+                    "kept": [r.id for r in retry_grade.kept],
+                    "verdict": retry_grade.verdict,
+                    "warnings": retry_grade.warnings,
+                },
+            )
+
+            if not retry_grade.needs_retry:
+                return retry_grade.kept, False
+
+            # The retry did not find anything relevant either, but it may
+            # still have surfaced better partial matches than the first
+            # pass. Keep whichever set is non-empty, preferring the
+            # wider one, and be honest with the generator either way.
+            return (retry_grade.kept or grade.kept), True
+
+        # Every source was already searched, so there is nothing left to
+        # widen to. Say so rather than retrying the same query.
+        log_stage(
+            stage="crag_retry",
+            session_id=session_id,
+            turn_id=turn_id,
+            data={
+                "reason": "all sources already searched, no retry possible",
+                "kept": [r.id for r in grade.kept],
+            },
+        )
+
+        return grade.kept, True
+
+    def _retrieve_from(self, question: str, sources: list) -> list:
+
+        all_records = []
+        seen_ids = set()
+
+        for source in sources:
+            retriever = self.retrievers[source]
+
+            records = retriever.retrieve(
+                question,
+                top_k=MAX_RESULTS_PER_SOURCE,
+            )
+
+            for record in records:
+                if record.id not in seen_ids:
+                    seen_ids.add(record.id)
+                    all_records.append(record)
+
+        return all_records
+
+
+
+
+------------------------------------------------------------------------------------------------------------------------------
+
+"""
+llm/llm_client.py
+
+WHAT THIS FILE DOES
+--------------------
+A thin wrapper around Ollama's local HTTP API. Every other module in
+this project calls `LLMClient().generate(...)` and never talks to
+Ollama's HTTP endpoint directly.
+
+WHY IT EXISTS
+-------------
+If we scattered `requests.post("http://localhost:11434/...")` calls
+across the pipeline, agent, and evaluation code, switching to a
+different model runtime later (e.g. a hosted API, or vLLM) would mean
+hunting through every file. Instead, EVERY OTHER MODULE only depends
+on this class's `generate(system_prompt, user_prompt)` method. Swap
+what happens *inside* generate() and nothing else in the project needs
+to change.
+
+HOW OLLAMA WORKS (briefly)
+----------------------------
+Ollama runs a local server (started with `ollama serve`, or
+automatically when you run `ollama run <model>`) that exposes a
+simple JSON HTTP API at http://localhost:11434. We use the
+`/api/chat` endpoint, which accepts a list of {role, content}
+messages -- same shape as OpenAI/Anthropic chat APIs -- and returns
+the model's reply.
+
+INPUTS  : system_prompt (str), user_prompt (str)
+OUTPUTS : the model's reply as a plain string
+
+REQUIRES: Ollama installed and running locally (`ollama serve`),
+          with the model in config.settings.OLLAMA_MODEL already
+          pulled (`ollama pull llama3.1:8b`, or whichever you set).
+"""
+
+import requests
+
+from config.settings import (
+    OLLAMA_BASE_URL,
+    OLLAMA_INDEXER_MODEL,
+    OLLAMA_TRAVERSER_MODEL,
+    OLLAMA_GENERATOR_MODEL,
+    OLLAMA_ROUTER_MODEL,
+    OLLAMA_SUMMARIZER_MODEL,
+    OLLAMA_GUARDRAIL_INPUT_MODEL,
+    OLLAMA_GUARDRAIL_OUTPUT_MODEL,
+    OLLAMA_GRADER_MODEL,
+    OLLAMA_INDEXER_TEMPERATURE,
+    OLLAMA_TRAVERSER_TEMPERATURE,
+    OLLAMA_GENERATOR_TEMPERATURE,
+    OLLAMA_ROUTER_TEMPERATURE,
+    OLLAMA_SUMMARIZER_TEMPERATURE,
+    OLLAMA_GUARDRAIL_INPUT_TEMPERATURE,
+    OLLAMA_GUARDRAIL_OUTPUT_TEMPERATURE,
+    OLLAMA_GRADER_TEMPERATURE,
+    OLLAMA_INDEXER_NUM_CTX,
+    OLLAMA_TRAVERSER_NUM_CTX,
+    OLLAMA_GENERATOR_NUM_CTX,
+    OLLAMA_ROUTER_NUM_CTX,
+    OLLAMA_SUMMARIZER_NUM_CTX,
+    OLLAMA_GUARDRAIL_INPUT_NUM_CTX,
+    OLLAMA_GUARDRAIL_OUTPUT_NUM_CTX,
+    OLLAMA_GRADER_NUM_CTX,
+    OLLAMA_DEFAULT_NUM_CTX,
+    OLLAMA_TIMEOUT_SECONDS,
+)
+
+
+class LLMClient:
+
+    MODEL_BY_ROLE = {
+        "indexer": OLLAMA_INDEXER_MODEL,
+        "traverser": OLLAMA_TRAVERSER_MODEL,
+        "generator": OLLAMA_GENERATOR_MODEL,
+        "router": OLLAMA_ROUTER_MODEL,
+        "summarizer": OLLAMA_SUMMARIZER_MODEL,
+        "guardrail_input": OLLAMA_GUARDRAIL_INPUT_MODEL,
+        "guardrail_output": OLLAMA_GUARDRAIL_OUTPUT_MODEL,
+        "grader": OLLAMA_GRADER_MODEL,
+    }
+
+    TEMPERATURE_BY_ROLE = {
+        "indexer": OLLAMA_INDEXER_TEMPERATURE,
+        "traverser": OLLAMA_TRAVERSER_TEMPERATURE,
+        "generator": OLLAMA_GENERATOR_TEMPERATURE,
+        "router": OLLAMA_ROUTER_TEMPERATURE,
+        "summarizer": OLLAMA_SUMMARIZER_TEMPERATURE,
+        "guardrail_input": OLLAMA_GUARDRAIL_INPUT_TEMPERATURE,
+        "guardrail_output": OLLAMA_GUARDRAIL_OUTPUT_TEMPERATURE,
+        "grader": OLLAMA_GRADER_TEMPERATURE,
+    }
+
+    # Context window per role. This MUST be sent explicitly: Ollama
+    # otherwise falls back to a small default (4096 for llama3.1:8b)
+    # and silently truncates any longer prompt. See the long comment on
+    # OLLAMA_*_NUM_CTX in config/settings.py for the measurement that
+    # made this necessary.
+    NUM_CTX_BY_ROLE = {
+        "indexer": OLLAMA_INDEXER_NUM_CTX,
+        "traverser": OLLAMA_TRAVERSER_NUM_CTX,
+        "generator": OLLAMA_GENERATOR_NUM_CTX,
+        "router": OLLAMA_ROUTER_NUM_CTX,
+        "summarizer": OLLAMA_SUMMARIZER_NUM_CTX,
+        "guardrail_input": OLLAMA_GUARDRAIL_INPUT_NUM_CTX,
+        "guardrail_output": OLLAMA_GUARDRAIL_OUTPUT_NUM_CTX,
+        "grader": OLLAMA_GRADER_NUM_CTX,
+    }
+
+    def __init__(
+        self,
+        role: str = "generator",
+        model: str = None,
+        temperature: float = None,
+        num_ctx: int = None,
+    ):
+        
+        if role not in self.MODEL_BY_ROLE:
+            valid_roles = ", ".join(self.MODEL_BY_ROLE.keys())
+            raise ValueError(
+                f"Unknown LLM role '{role}'. "
+                f"Valid roles: {valid_roles}"
+            )
+
+        self.role = role
+
+        self.model = model or self.MODEL_BY_ROLE[role]
+
+        self.temperature = (
+            temperature
+            if temperature is not None
+            else self.TEMPERATURE_BY_ROLE[role]
+        )
+
+        # .get() with a fallback, not [role], on purpose: a role added to
+        # MODEL_BY_ROLE but not here should degrade to a working default
+        # rather than raise KeyError when the client is constructed. That
+        # is not hypothetical -- it happened when the five Phase 2 roles
+        # were added to the model and temperature tables only, which made
+        # LLMClient(role="router") and every other new role unusable.
+        self.num_ctx = (
+            num_ctx
+            if num_ctx is not None
+            else self.NUM_CTX_BY_ROLE.get(role, OLLAMA_DEFAULT_NUM_CTX)
+        )
+
+    def generate(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        response_format=None,
+    ) -> str:
+       
+        url = f"{OLLAMA_BASE_URL}/api/chat"
+
+        payload = {
+            "model": self.model,
+
+            "messages": [
+                {
+                    "role": "system",
+                    "content": system_prompt,
+                },
+                {
+                    "role": "user",
+                    "content": user_prompt,
+                },
+            ],
+
+            "stream": False,
+
+            "options": {
+                "temperature": self.temperature,
+
+                # Without this Ollama truncates the prompt to its own
+                # small default and never says so.
+                "num_ctx": self.num_ctx,
+            },
+        }
+
+        if response_format is not None:
+            payload["format"] = response_format
+
+        try:
+            response = requests.post(
+                url,
+                json=payload,
+                timeout=OLLAMA_TIMEOUT_SECONDS,
+            )
+
+            response.raise_for_status()
+
+        except requests.exceptions.ConnectionError as e:
+            raise RuntimeError(
+                f"Could not reach local Ollama at "
+                f"{OLLAMA_BASE_URL}. "
+                f"Make sure Ollama is running and the model "
+                f"'{self.model}' is installed."
+            ) from e
+
+        except requests.exceptions.Timeout as e:
+            raise RuntimeError(
+                f"Ollama timed out after "
+                f"{OLLAMA_TIMEOUT_SECONDS} seconds "
+                f"while using model '{self.model}'."
+            ) from e
+
+        except requests.exceptions.HTTPError as e:
+            raise RuntimeError(
+                f"Ollama returned an error for model "
+                f"'{self.model}'. "
+                f"Make sure the model is installed with "
+                f"`ollama pull {self.model}`. "
+                f"Details: {e}"
+            ) from e
+
+        except requests.exceptions.RequestException as e:
+            raise RuntimeError(
+                f"Error communicating with local Ollama: {e}"
+            ) from e
+
+        try:
+            data = response.json()
+            return data["message"]["content"]
+
+        except (ValueError, KeyError, TypeError) as e:
+            raise RuntimeError(
+                "Ollama returned an unexpected response format."
+            ) from e
+
+
+------------------------------------------------------------------------------------------------------------------------------

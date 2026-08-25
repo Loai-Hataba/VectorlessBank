@@ -42,7 +42,7 @@ OUTPUTS : none (writes a line to PIPELINE_LOG_PATH; returns nothing)
 
 import json
 import sys
-import time
+from datetime import datetime
 
 from config.settings import LOGS_DIR, PIPELINE_LOG_PATH
 
@@ -81,7 +81,9 @@ def log_stage(
     """
 
     entry = {
-        "timestamp": time.time(),
+      "timestamp": datetime.now().astimezone().isoformat(
+        timespec="seconds"
+      ),
         "stage": stage,
         "session_id": session_id,
         "turn_id": turn_id,

@@ -160,11 +160,8 @@ class ConversationMemory:
             f"Assistant: {turn['assistant']}"
         )
 
-        new_summary = self.summarizer.generate(
-            system_prompt=SUMMARIZER_SYSTEM_PROMPT,
-            user_prompt=user_prompt,
-        ).strip()
-
+        new_summary = self.summarizer.generate(system_prompt=SUMMARIZER_SYSTEM_PROMPT,user_prompt=user_prompt,).strip()
+        
         log_stage(
             stage="memory_summarize",
             session_id=session_id,

@@ -21,13 +21,12 @@ const input = document.getElementById("message-input");
 const sendButton = document.getElementById("send-button");
 
 function getSessionId() {
-  let sessionId = localStorage.getItem("session_id");
-  if (!sessionId) {
-    sessionId = crypto.randomUUID();
-    localStorage.setItem("session_id", sessionId);
-  }
+  const sessionId = crypto.randomUUID();
+  localStorage.setItem("session_id", sessionId);
   return sessionId;
 }
+
+const sessionId = getSessionId();
 
 composer.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -45,7 +44,7 @@ composer.addEventListener("submit", async (event) => {
     const response = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: question, session_id: getSessionId() }),
+      body: JSON.stringify({ message: question, session_id: sessionId }),
     });
 
     const data = await response.json();
@@ -79,6 +78,7 @@ function appendUserMessage(text) {
   wrapper.innerHTML = `<div class="message-body"><div class="bubble">${escapeHtml(text)}</div></div>`;
   chatWindow.appendChild(wrapper);
   scrollToBottom();
+}
 
 function appendAssistantMessage(text, sources, isError) {
   const wrapper = document.createElement("div");

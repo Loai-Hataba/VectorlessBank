@@ -1,3 +1,9 @@
 1. Add arabic
 2. add excel query handling
-3.
+3. fix roles (pageindex.summarizer & system prompts of indexer, pageindex.indexer model)
+    3.1 remove categroizer
+    3.2 use role summarizer in pageindex.summary 
+    3.3 use pageindex indexing model (instead of relying on the categrizer logic for indexing mds)
+4. the router doesn't route properly when message doesnt need retrieval or routing
+5. make it faster
+6. when thinking code should display song lyrics or fun banking tips (like games)

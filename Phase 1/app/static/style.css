@@ -337,6 +337,17 @@ body {
 
 .typing {
   color: var(--ink-soft);
+}
+
+.thinking-label {
+  color: var(--ink-soft);
+}
+
+.typing-tip {
+  margin-top: 4px;
+  color: var(--maroon-bright);
+  font-family: "Fraunces", serif;
+  font-size: 12px;
   font-style: italic;
 }
 

@@ -19,6 +19,13 @@ const chatWindow = document.getElementById("chat-window");
 const composer = document.getElementById("composer");
 const input = document.getElementById("message-input");
 const sendButton = document.getElementById("send-button");
+const bankingTips = [
+  "Tip: A budget is just a spending plan wearing a tie.",
+  "Tip: Checking your balance is cheaper than guessing it.",
+  "Tip: Small savings add up faster than loose change in a sofa.",
+  "Tip: Before a purchase, give it one dramatic pause for thought.",
+  "Tip: Your future self appreciates an emergency fund.",
+];
 
 function getSessionId() {
   const sessionId = crypto.randomUUID();
@@ -48,7 +55,7 @@ composer.addEventListener("submit", async (event) => {
     });
 
     const data = await response.json();
-    typingEl.remove();
+    removeTypingIndicator(typingEl);
 
     if (!response.ok) {
       appendAssistantMessage(data.error || "Something went wrong.", [], true);
@@ -56,7 +63,7 @@ composer.addEventListener("submit", async (event) => {
       appendAssistantMessage(data.answer, data.sources || [], false);
     }
   } catch (err) {
-    typingEl.remove();
+    removeTypingIndicator(typingEl);
     appendAssistantMessage(
       "Could not reach the server. Is the Flask app running?",
       [],
@@ -109,10 +116,31 @@ function appendAssistantMessage(text, sources, isError) {
 function appendTypingIndicator() {
   const wrapper = document.createElement("div");
   wrapper.className = "message assistant";
-  wrapper.innerHTML = `<div class="bubble typing">thinking...</div>`;
+  const bubble = document.createElement("div");
+  bubble.className = "bubble typing";
+  const thinkingLabel = document.createElement("div");
+  thinkingLabel.className = "thinking-label";
+  thinkingLabel.textContent = "thinking...";
+  const tip = document.createElement("div");
+  tip.className = "typing-tip";
+  tip.textContent = bankingTips[0];
+  bubble.append(thinkingLabel, tip);
+  wrapper.appendChild(bubble);
   chatWindow.appendChild(wrapper);
   scrollToBottom();
+
+  let tipIndex = 0;
+  wrapper.tipTimer = window.setInterval(() => {
+    tipIndex = (tipIndex + 1) % bankingTips.length;
+    tip.textContent = bankingTips[tipIndex];
+  }, 3200);
+
   return wrapper;
+}
+
+function removeTypingIndicator(wrapper) {
+  window.clearInterval(wrapper.tipTimer);
+  wrapper.remove();
 }
 
 function scrollToBottom() {

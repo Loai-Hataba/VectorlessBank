@@ -46,6 +46,7 @@ from config.settings import (
     OLLAMA_GUARDRAIL_INPUT_MODEL,
     OLLAMA_GUARDRAIL_OUTPUT_MODEL,
     OLLAMA_GRADER_MODEL,
+    OLLAMA_QUERIER_MODEL,
     OLLAMA_INDEXER_TEMPERATURE,
     OLLAMA_TRAVERSER_TEMPERATURE,
     OLLAMA_GENERATOR_TEMPERATURE,
@@ -54,6 +55,7 @@ from config.settings import (
     OLLAMA_GUARDRAIL_INPUT_TEMPERATURE,
     OLLAMA_GUARDRAIL_OUTPUT_TEMPERATURE,
     OLLAMA_GRADER_TEMPERATURE,
+    OLLAMA_QUERIER_TEMPERATURE,
     OLLAMA_INDEXER_NUM_CTX,
     OLLAMA_TRAVERSER_NUM_CTX,
     OLLAMA_GENERATOR_NUM_CTX,
@@ -63,6 +65,7 @@ from config.settings import (
     OLLAMA_GUARDRAIL_OUTPUT_NUM_CTX,
     OLLAMA_GRADER_NUM_CTX,
     OLLAMA_DEFAULT_NUM_CTX,
+    OLLAMA_QUERIER_NUM_CTX,
     OLLAMA_TIMEOUT_SECONDS,
 )
 
@@ -78,6 +81,7 @@ class LLMClient:
         "guardrail_input": OLLAMA_GUARDRAIL_INPUT_MODEL,
         "guardrail_output": OLLAMA_GUARDRAIL_OUTPUT_MODEL,
         "grader": OLLAMA_GRADER_MODEL,
+        "querier": OLLAMA_QUERIER_MODEL,
     }
 
     TEMPERATURE_BY_ROLE = {
@@ -89,6 +93,7 @@ class LLMClient:
         "guardrail_input": OLLAMA_GUARDRAIL_INPUT_TEMPERATURE,
         "guardrail_output": OLLAMA_GUARDRAIL_OUTPUT_TEMPERATURE,
         "grader": OLLAMA_GRADER_TEMPERATURE,
+        "querier": OLLAMA_QUERIER_TEMPERATURE,
     }
 
     # Context window per role. This MUST be sent explicitly: Ollama
@@ -105,6 +110,7 @@ class LLMClient:
         "guardrail_input": OLLAMA_GUARDRAIL_INPUT_NUM_CTX,
         "guardrail_output": OLLAMA_GUARDRAIL_OUTPUT_NUM_CTX,
         "grader": OLLAMA_GRADER_NUM_CTX,
+        "querier": OLLAMA_QUERIER_NUM_CTX,
     }
 
     def __init__(

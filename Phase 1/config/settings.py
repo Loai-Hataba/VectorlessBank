@@ -43,6 +43,8 @@ CARDS_XLSX_PATH = RAW_DATA_DIR / "20260306_Product_Catalog_new_version.xlsx"
 OFFERS_XLSX_PATH = RAW_DATA_DIR / "Feb_2026_offers_-_Wave_1_-_Call_Center.xlsx"
 CAMPAIGNS_JSON_PATH = RAW_DATA_DIR / "campaigns_clean.json"
 
+DATAFRAME_INDEX_DIR = PROJECT_ROOT / "data" / "dataframes"
+DATAFRAME_SOURCES = frozenset({"cards", "offers"})
 # ============================================================
 # LLM / OLLAMA CONFIGURATION
 # ============================================================
@@ -59,6 +61,8 @@ OLLAMA_SUMMARIZER_MODEL = "llama3.1:8b"
 OLLAMA_GUARDRAIL_INPUT_MODEL = "llama3.1:8b"
 OLLAMA_GUARDRAIL_OUTPUT_MODEL = "llama3.1:8b"
 OLLAMA_GRADER_MODEL = "llama3.1:8b"
+OLLAMA_QUERIER_MODEL = "llama3.1:8b"
+
 
 # ------------------------------------------------------------
 # Temperature
@@ -71,6 +75,7 @@ OLLAMA_SUMMARIZER_TEMPERATURE = 0.0
 OLLAMA_GUARDRAIL_INPUT_TEMPERATURE = 0.0
 OLLAMA_GUARDRAIL_OUTPUT_TEMPERATURE = 0.0
 OLLAMA_GRADER_TEMPERATURE = 0.0
+OLLAMA_QUERIER_TEMPERATURE = 0.0
 
 # ------------------------------------------------------------
 # Context window (num_ctx)
@@ -114,12 +119,9 @@ OLLAMA_TRAVERSER_NUM_CTX = int(os.environ.get("OLLAMA_TRAVERSER_NUM_CTX","32768"
 # question is answered correctly and the fee is honestly reported as not
 # stated. See also MAX_CONTEXT_TOTAL_CHARS below, which attacks the same
 # problem from the other end.
-OLLAMA_GENERATOR_NUM_CTX = int(
-    os.environ.get(
-        "OLLAMA_GENERATOR_NUM_CTX",
-        "32768",
-    )
-)
+OLLAMA_GENERATOR_NUM_CTX = int(os.environ.get("OLLAMA_GENERATOR_NUM_CTX","32768",))
+
+
 
 # ---- Phase 2 roles ----
 #
@@ -131,19 +133,13 @@ OLLAMA_GENERATOR_NUM_CTX = int(
 
 # Router and summarizer see a short question, a source list and a small
 # conversation window. Partner A sized and tested these.
-OLLAMA_ROUTER_NUM_CTX = int(
-    os.environ.get("OLLAMA_ROUTER_NUM_CTX", "4096")
-)
+OLLAMA_ROUTER_NUM_CTX = int(os.environ.get("OLLAMA_ROUTER_NUM_CTX", "4096"))
 
-OLLAMA_SUMMARIZER_NUM_CTX = int(
-    os.environ.get("OLLAMA_SUMMARIZER_NUM_CTX", "4096")
-)
+OLLAMA_SUMMARIZER_NUM_CTX = int(os.environ.get("OLLAMA_SUMMARIZER_NUM_CTX", "4096"))
 
 # Reads one raw user message and classifies it. The smallest prompt in
 # the pipeline.
-OLLAMA_GUARDRAIL_INPUT_NUM_CTX = int(
-    os.environ.get("OLLAMA_GUARDRAIL_INPUT_NUM_CTX", "2048")
-)
+OLLAMA_GUARDRAIL_INPUT_NUM_CTX = int(os.environ.get("OLLAMA_GUARDRAIL_INPUT_NUM_CTX", "2048"))
 
 # NOT 4096. The output guardrail reads the generated answer AND the
 # whole context it must be checked against, so it needs the same room as
@@ -151,38 +147,33 @@ OLLAMA_GUARDRAIL_INPUT_NUM_CTX = int(
 # reports the generator's legitimate, correctly-sourced claims as
 # fabrication -- which is exactly what happened when its context was
 # capped too low. See the note on GUARDRAIL_MAX_CONTEXT_CHARS.
-OLLAMA_GUARDRAIL_OUTPUT_NUM_CTX = int(
-    os.environ.get("OLLAMA_GUARDRAIL_OUTPUT_NUM_CTX", "32768")
-)
+OLLAMA_GUARDRAIL_OUTPUT_NUM_CTX = int(os.environ.get("OLLAMA_GUARDRAIL_OUTPUT_NUM_CTX", "32768"))
 
 # Sees every candidate record before filtering -- up to three sources'
 # worth -- as compact GRADER_MAX_RECORD_CHARS renderings. Fifteen
 # candidates at 1200 characters is already ~4,500 tokens before the
 # prompt, so 8192 leaves too little headroom.
-OLLAMA_GRADER_NUM_CTX = int(
-    os.environ.get("OLLAMA_GRADER_NUM_CTX", "16384")
-)
+OLLAMA_GRADER_NUM_CTX = int(os.environ.get("OLLAMA_GRADER_NUM_CTX", "16384"))
 
 # Fallback for any role that has no explicit entry, so that adding a
 # role to MODEL_BY_ROLE without adding one here degrades to a usable
 # default instead of raising KeyError at construction time.
-OLLAMA_DEFAULT_NUM_CTX = int(
-    os.environ.get(
-        "OLLAMA_DEFAULT_NUM_CTX",
-        "8192",
-    )
-)
+OLLAMA_DEFAULT_NUM_CTX = int(os.environ.get("OLLAMA_DEFAULT_NUM_CTX","8192",))
+OLLAMA_QUERIER_NUM_CTX = int(os.environ.get("OLLAMA_QUERIER_NUM_CTX", "4096"))
 
 # ---------------------------------------------------------------------------
 # LLM request timeout
 # ---------------------------------------------------------------------------
 
-OLLAMA_TIMEOUT_SECONDS = int(
-    os.environ.get(
-        "OLLAMA_TIMEOUT_SECONDS",
-        "300",
-    )
-)
+OLLAMA_TIMEOUT_SECONDS = int(os.environ.get("OLLAMA_TIMEOUT_SECONDS","300",))
+
+
+# ---------------------------------------------------------------------------
+# LLM Querying (filters) using python
+#---------------------------------------------------------------------------
+VALID_FILTER_OPS = frozenset({"==", "!=", "contains", ">", "<", ">=", "<="})
+QUERIER_MAX_SAMPLE_ROWS = 3
+
 
 # ---------------------------------------------------------------------------
 # PageIndex tree indexing
@@ -191,35 +182,19 @@ OLLAMA_TIMEOUT_SECONDS = int(
 # Whether PageIndex should write an LLM-generated summary onto each node.
 # "no" makes indexing fully deterministic and requires no LLM at all;
 # "yes" gives the traversal LLM more to go on, at one call per node.
-PAGEINDEX_ADD_NODE_SUMMARY = os.environ.get(
-    "PAGEINDEX_ADD_NODE_SUMMARY",
-    "no",
-)
+PAGEINDEX_ADD_NODE_SUMMARY = os.environ.get("PAGEINDEX_ADD_NODE_SUMMARY", "no",)
 
 # PageIndex talks to models through LiteLLM, whose naming is
 # "provider/model" -- so the local Ollama model needs an "ollama/" prefix.
-PAGEINDEX_SUMMARY_MODEL = os.environ.get(
-    "PAGEINDEX_SUMMARY_MODEL",
-    f"ollama/{OLLAMA_INDEXER_MODEL}",
-)
+PAGEINDEX_SUMMARY_MODEL = os.environ.get("PAGEINDEX_SUMMARY_MODEL",    f"ollama/{OLLAMA_INDEXER_MODEL}",)
 
 # Nodes shorter than this many tokens are not sent to the LLM at all --
 # PageIndex uses their own text as the summary.
-PAGEINDEX_SUMMARY_TOKEN_THRESHOLD = int(
-    os.environ.get(
-        "PAGEINDEX_SUMMARY_TOKEN_THRESHOLD",
-        "200",
-    )
-)
+PAGEINDEX_SUMMARY_TOKEN_THRESHOLD = int(os.environ.get("PAGEINDEX_SUMMARY_TOKEN_THRESHOLD","200",))
 
 # Every node summary is shown to the traversal LLM, so an un-truncated
 # summary of a 366-column card record would blow up the traversal prompt.
-PAGEINDEX_MAX_SUMMARY_CHARS = int(
-    os.environ.get(
-        "PAGEINDEX_MAX_SUMMARY_CHARS",
-        "400",
-    )
-)
+PAGEINDEX_MAX_SUMMARY_CHARS = int(os.environ.get("PAGEINDEX_MAX_SUMMARY_CHARS","400",))
 
 # ---------------------------------------------------------------------------
 # Retrieval settings

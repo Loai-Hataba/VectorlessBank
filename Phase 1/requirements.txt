@@ -4,3 +4,4 @@ requests==2.32.3
 pageindex==0.2.10
 ollama==0.32.15
 typing-extensions>=4.7.0,<5.0
+pandas=2.3.3

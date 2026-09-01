@@ -79,7 +79,7 @@ class ConversationMemory:
         self._sessions: dict[str, dict] = {}
         self._turn_counters: itertools.count = None
         self._turn_counters_by_session: dict[str, itertools.count] = {}
-        self.summarizer = LLMClient(role="summarizer")
+        self.summarizer = LLMClient(role="generator", temperature=0.0)
 
     def next_turn_id(self, session_id: str) -> str:
         """

@@ -44,6 +44,8 @@ OUTPUTS : dict: {"needs_retrieval": bool, "sources": list[str]}
 
 import json
 
+import time
+
 from config.settings import VALID_SOURCES
 from llm.llm_client import LLMClient
 from pipeline.pipeline_logger import log_stage
@@ -75,7 +77,7 @@ Respond with ONLY a JSON object, no other text, in exactly this shape:
 class Router:
 
     def __init__(self):
-        self.llm_client = LLMClient(role="router")
+        self.llm_client = LLMClient(role="traverser")
 
     def route(
         self,
@@ -85,6 +87,7 @@ class Router:
     ) -> dict:
 
         raw_output = None
+        started = time.time()
 
         try:
             raw_output = self.llm_client.generate(
@@ -123,6 +126,8 @@ class Router:
                 "decision": decision,
                 "fell_back_to_query_all": fell_back,
             },
+            duration_ms=(time.time() - started) * 1000,
+            llm=self.llm_client.last_metrics,
         )
 
         return decision

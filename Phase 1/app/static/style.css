@@ -420,3 +420,14 @@ body {
     padding: 12px 14px 16px;
   }
 }
+/* ---------------------------------------------------------------- */
+/* Answer text                                                       */
+/*                                                                   */
+/* Holds the finished, guardrail-approved answer. pre-wrap because   */
+/* the generator writes bullet lists and blank lines that would      */
+/* otherwise collapse into one paragraph.                            */
+/* ---------------------------------------------------------------- */
+
+.answer-text {
+  white-space: pre-wrap;
+}

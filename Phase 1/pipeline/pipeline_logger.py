@@ -52,6 +52,8 @@ def log_stage(
     session_id: str,
     turn_id: str,
     data: dict,
+    duration_ms: int | None = None,
+    llm: dict | None = None,
 ) -> None:
     """
     Append one JSON line recording what happened at one pipeline stage.
@@ -76,19 +78,47 @@ def log_stage(
                  forcing one shared schema would mean editing this
                  file every time any stage's logging needs change.
 
+    duration_ms: how long this stage took, wall clock. Optional
+                 because not every stage is worth timing, but pass it
+                 wherever you can -- see the note below.
+    llm        : what Ollama reported about the model call this stage
+                 made (LLMClient.last_metrics). Optional for the same
+                 reason: stages that make no model call have none.
+
+    WHY DURATIONS ARE RECORDED SEPARATELY FROM THE TIMESTAMP
+    --------------------------------------------------------
+    They used to be inferred by subtracting one line's timestamp from
+    the next, which was wrong twice over. The timestamps were
+    second-granular, so anything under a second read as zero; and a
+    subtraction cannot tell you WHY a stage was slow. On this hardware
+    the two costs worth separating are "the model was evicted and
+    reloaded" (~15s, pure waste) and "the prompt was enormous" (the
+    offers tree is 26,560 tokens) -- and they look identical from the
+    outside. Ollama reports both, so `llm` now carries them per stage
+    and the guesswork is gone.
+
+    Timestamps are millisecond-granular for the same reason.
+
     Never raises. A logging failure is printed to stderr and swallowed
     so it can never turn into a user-facing error.
     """
 
     entry = {
-      "timestamp": datetime.now().astimezone().isoformat(
-        timespec="seconds"
-      ),
+        "timestamp": datetime.now().astimezone().isoformat(
+            timespec="milliseconds"
+        ),
         "stage": stage,
         "session_id": session_id,
         "turn_id": turn_id,
-        **data,
     }
+
+    if duration_ms is not None:
+        entry["duration_ms"] = int(duration_ms)
+
+    if llm is not None:
+        entry["llm"] = llm
+
+    entry.update(data)
 
     try:
         LOGS_DIR.mkdir(parents=True, exist_ok=True)

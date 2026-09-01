@@ -21,7 +21,9 @@ INPUTS  : HTTP requests from the browser
 OUTPUTS : HTML page (GET /) and JSON answers (POST /api/chat)
 """
 
-from flask import Flask, request, jsonify, render_template
+import json
+
+from flask import Flask, Response, request, jsonify, render_template
 
 from pipeline.rag_pipeline import RagPipeline
 from config.settings import FLASK_HOST, FLASK_PORT, FLASK_DEBUG
@@ -60,6 +62,90 @@ def chat():
     ]
 
     return jsonify({"answer": result["answer"], "sources": sources})
+
+
+def _sse(event: str, payload: dict) -> str:
+    """One Server-Sent Events frame."""
+
+    return f"event: {event}\ndata: {json.dumps(payload)}\n\n"
+
+
+@app.route("/api/chat/progress", methods=["POST"])
+def chat_progress():
+    """
+    The same turn as /api/chat, reported as it happens.
+
+    WHY A SECOND ROUTE RATHER THAN REPLACING THE FIRST
+    --------------------------------------------------
+    /api/chat is what the tests and any script hitting this service
+    use, and a plain JSON POST is the right shape for them. The browser
+    wants something different -- on this hardware an answer takes tens
+    of seconds, and a silent wait that long reads as a hung app. Both
+    routes run the SAME pipeline turn; only the delivery differs.
+
+    Events emitted:
+      stage  {stage, label, detail}  a step began
+      done   {answer, sources}
+      error  {message}
+
+    The ANSWER is not streamed. It is sent once, in `done`, after the
+    output guardrail has approved it -- see answer_with_progress() in
+    pipeline/rag_pipeline.py for why. What streams is only which step
+    the turn is on.
+    """
+
+    data = request.get_json(silent=True) or {}
+    question = (data.get("message") or "").strip()
+    session_id = (data.get("session_id") or "").strip()
+
+    if not question:
+        return jsonify({"error": "Empty message"}), 400
+
+    if not session_id:
+        return jsonify({"error": "Missing session_id"}), 400
+
+    def events():
+        try:
+            for kind, payload in pipeline.answer_with_progress(
+                question, session_id=session_id
+            ):
+                if kind == "stage":
+                    yield _sse("stage", payload)
+
+                elif kind == "result":
+                    sources = [
+                        {"source": r.source, "title": r.title}
+                        for r in payload["retrieved_records"]
+                    ]
+
+                    yield _sse(
+                        "done",
+                        {
+                            "answer": payload["answer"],
+                            "sources": sources,
+                        },
+                    )
+
+        except RuntimeError as e:
+            # Ollama unreachable, timed out, or refused the model.
+            yield _sse("error", {"message": str(e)})
+
+        except Exception as e:  # noqa: BLE001
+            # The stream has already begun, so there is no status code
+            # left to set -- the only way to tell the browser is in-band.
+            yield _sse(
+                "error",
+                {"message": f"Unexpected server error: {e}"},
+            )
+
+    return Response(
+        events(),
+        mimetype="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 if __name__ == "__main__":

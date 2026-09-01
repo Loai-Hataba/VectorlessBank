@@ -201,7 +201,7 @@ class RecordGrader:
     ):
         self.llm_client = (
             llm_client
-            or LLMClient(role="grader")
+            or LLMClient(role="generator", temperature=0.0)
         )
 
         self.top_k = top_k

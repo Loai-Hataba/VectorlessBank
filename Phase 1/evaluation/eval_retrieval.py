@@ -21,10 +21,20 @@ objectively checkable.
 
 WHY IT DELIBERATELY DOES NOT GENERATE ANSWERS
 ---------------------------------------------
-A full question takes roughly 165-205 seconds end to end, most of it
-generation, so a 40-case suite with answers is hours. Retrieval-only
-keeps the everyday feedback loop short enough to actually be run.
-Answer quality is Tier 2's job (RAGAS), run as a batch.
+A full question takes roughly 45 seconds end to end, most of it
+generation, so a 39-case suite with answers is around half an hour
+before anything is judged. Retrieval-only keeps the everyday feedback
+loop short enough to actually be run.
+
+Answer quality is therefore NOT measured here, and is currently not
+measured anywhere -- the RAGAS-based Tier 2 this line used to point at
+was evaluated and dropped, because it costs ~60 langchain packages and
+a local judge slow enough that nobody would run it. The in-pipeline
+output guardrail checks grounding on every real question instead, which
+is continuous rather than occasional. If a batch metric is wanted
+later, evaluation/eval_input_guardrail.py is the pattern to copy:
+labelled cases, no new dependencies, false positives and false
+negatives reported separately.
 
 USAGE
 -----

@@ -104,11 +104,67 @@ OLLAMA_QUERIER_TEMPERATURE = 0.0
 # COST NOTE: a bigger context window costs memory (KV cache), not
 # accuracy. Keep each role no larger than the biggest prompt it really
 # sends, and lower these on a machine that is short on VRAM.
-OLLAMA_INDEXER_NUM_CTX = int(os.environ.get("OLLAMA_INDEXER_NUM_CTX","8192",))
+# THE SECOND REASON THIS SECTION MATTERS: RELOAD COST
+# ---------------------------------------------------
+# Everything above is still true -- too small a window silently
+# truncates and produces the bugs described. But a SECOND cost was
+# measured later, and it pulls in the opposite direction.
+#
+# Ollama keys its loaded model runner on (model + num_ctx). Two roles
+# that share a model but ask for different num_ctx values are, to
+# Ollama, two different runners -- and this machine's 6 GB card only
+# has room for one. So every role switch EVICTS the model and reloads
+# ~5 GB from scratch. Measured on this machine, llama3.1:8b:
+#
+#     same num_ctx twice   ->  2.9s wall, 0.4s of it loading
+#     num_ctx changed      -> 19.7s wall, 16.1s of it loading
+#     num_ctx changed back -> 17.1s wall, 14.5s of it loading
+#
+# One turn used to walk 2048 -> 4096 -> 4096 -> 32768 -> 16384 ->
+# 32768 -> 32768: five reloads on a clean turn, seven when CRAG
+# widens. At ~15s each that was 75-105 SECONDS PER QUESTION spent
+# loading and doing no work at all. On an identical nine-call
+# sequence, before and after:
+#
+#     before   wall 154.5s   loading 126.4s   reloads 8
+#     after    wall  30.5s   loading   2.9s   reloads 0
+#
+# So the per-role numbers below now all default to ONE shared value.
+# The per-role names and their env overrides are deliberately kept:
+# the reasoning above is still the reasoning that sets the FLOOR, and
+# a future deployment on a bigger card can raise any single role again
+# by exporting its variable. What changed is only the default, and the
+# rule it now follows: pick the largest window any role genuinely
+# needs and give it to all of them, because a shared window is free
+# and a switched window costs fifteen seconds.
+#
+# The largest genuine need is the traverser at ~26,560 tokens for the
+# offers tree, so the shared value is its old 32768. Lowering this
+# below 32768 will silently truncate the offers traversal and bring
+# back the "every question retrieves the same records" bug.
+#
+# MEMORY: 32768 tokens of KV cache costs ~4 GB at f16 on this model
+# (32 layers x 8 KV heads x 128 dim x 2 x 2 bytes = 128 KB/token),
+# which does NOT fit alongside 4.9 GB of weights on a 6 GB card. Run
+# the Ollama SERVER with OLLAMA_FLASH_ATTENTION=1 and
+# OLLAMA_KV_CACHE_TYPE=q8_0 to halve that to ~2 GB. Measured on the
+# real offers traversal, 28,229 tokens:
+#
+#     f16 KV, no flash attention   176.1s   10.0 GB   61% CPU / 39% GPU
+#     q8_0 KV + flash attention     62.5s    7.6 GB   45% CPU / 55% GPU
+#
+# Those are server environment variables, not request options -- they
+# must be set before `ollama serve` starts, and this file cannot set
+# them.
+OLLAMA_SHARED_NUM_CTX = int(os.environ.get("OLLAMA_SHARED_NUM_CTX", "32768"))
+
+_SHARED = str(OLLAMA_SHARED_NUM_CTX)
+
+OLLAMA_INDEXER_NUM_CTX = int(os.environ.get("OLLAMA_INDEXER_NUM_CTX", _SHARED))
 # The largest consumer: an entire tree index in a single prompt. The
 # offers tree needs ~26.5k tokens today, so this leaves headroom for
 # the tree to grow before silent truncation returns.
-OLLAMA_TRAVERSER_NUM_CTX = int(os.environ.get("OLLAMA_TRAVERSER_NUM_CTX","32768",))
+OLLAMA_TRAVERSER_NUM_CTX = int(os.environ.get("OLLAMA_TRAVERSER_NUM_CTX", _SHARED))
 # Retrieved records + conversation memory + the answer being written.
 #
 # Raised from 16384 after a measured failure: a nine-record context came
@@ -119,7 +175,7 @@ OLLAMA_TRAVERSER_NUM_CTX = int(os.environ.get("OLLAMA_TRAVERSER_NUM_CTX","32768"
 # question is answered correctly and the fee is honestly reported as not
 # stated. See also MAX_CONTEXT_TOTAL_CHARS below, which attacks the same
 # problem from the other end.
-OLLAMA_GENERATOR_NUM_CTX = int(os.environ.get("OLLAMA_GENERATOR_NUM_CTX","32768",))
+OLLAMA_GENERATOR_NUM_CTX = int(os.environ.get("OLLAMA_GENERATOR_NUM_CTX", _SHARED))
 
 
 
@@ -133,13 +189,13 @@ OLLAMA_GENERATOR_NUM_CTX = int(os.environ.get("OLLAMA_GENERATOR_NUM_CTX","32768"
 
 # Router and summarizer see a short question, a source list and a small
 # conversation window. Partner A sized and tested these.
-OLLAMA_ROUTER_NUM_CTX = int(os.environ.get("OLLAMA_ROUTER_NUM_CTX", "4096"))
+OLLAMA_ROUTER_NUM_CTX = int(os.environ.get("OLLAMA_ROUTER_NUM_CTX", _SHARED))
 
-OLLAMA_SUMMARIZER_NUM_CTX = int(os.environ.get("OLLAMA_SUMMARIZER_NUM_CTX", "4096"))
+OLLAMA_SUMMARIZER_NUM_CTX = int(os.environ.get("OLLAMA_SUMMARIZER_NUM_CTX", _SHARED))
 
 # Reads one raw user message and classifies it. The smallest prompt in
 # the pipeline.
-OLLAMA_GUARDRAIL_INPUT_NUM_CTX = int(os.environ.get("OLLAMA_GUARDRAIL_INPUT_NUM_CTX", "2048"))
+OLLAMA_GUARDRAIL_INPUT_NUM_CTX = int(os.environ.get("OLLAMA_GUARDRAIL_INPUT_NUM_CTX", _SHARED))
 
 # NOT 4096. The output guardrail reads the generated answer AND the
 # whole context it must be checked against, so it needs the same room as
@@ -147,25 +203,72 @@ OLLAMA_GUARDRAIL_INPUT_NUM_CTX = int(os.environ.get("OLLAMA_GUARDRAIL_INPUT_NUM_
 # reports the generator's legitimate, correctly-sourced claims as
 # fabrication -- which is exactly what happened when its context was
 # capped too low. See the note on GUARDRAIL_MAX_CONTEXT_CHARS.
-OLLAMA_GUARDRAIL_OUTPUT_NUM_CTX = int(os.environ.get("OLLAMA_GUARDRAIL_OUTPUT_NUM_CTX", "32768"))
+OLLAMA_GUARDRAIL_OUTPUT_NUM_CTX = int(os.environ.get("OLLAMA_GUARDRAIL_OUTPUT_NUM_CTX", _SHARED))
 
 # Sees every candidate record before filtering -- up to three sources'
 # worth -- as compact GRADER_MAX_RECORD_CHARS renderings. Fifteen
 # candidates at 1200 characters is already ~4,500 tokens before the
 # prompt, so 8192 leaves too little headroom.
-OLLAMA_GRADER_NUM_CTX = int(os.environ.get("OLLAMA_GRADER_NUM_CTX", "16384"))
+OLLAMA_GRADER_NUM_CTX = int(os.environ.get("OLLAMA_GRADER_NUM_CTX", _SHARED))
 
 # Fallback for any role that has no explicit entry, so that adding a
 # role to MODEL_BY_ROLE without adding one here degrades to a usable
 # default instead of raising KeyError at construction time.
-OLLAMA_DEFAULT_NUM_CTX = int(os.environ.get("OLLAMA_DEFAULT_NUM_CTX","8192",))
-OLLAMA_QUERIER_NUM_CTX = int(os.environ.get("OLLAMA_QUERIER_NUM_CTX", "4096"))
+OLLAMA_DEFAULT_NUM_CTX = int(os.environ.get("OLLAMA_DEFAULT_NUM_CTX", _SHARED))
+OLLAMA_QUERIER_NUM_CTX = int(os.environ.get("OLLAMA_QUERIER_NUM_CTX", _SHARED))
 
 # ---------------------------------------------------------------------------
 # LLM request timeout
 # ---------------------------------------------------------------------------
 
 OLLAMA_TIMEOUT_SECONDS = int(os.environ.get("OLLAMA_TIMEOUT_SECONDS","300",))
+
+
+# ---------------------------------------------------------------------------
+# How long Ollama keeps the model resident between calls
+# ---------------------------------------------------------------------------
+# Ollama unloads an idle model after 5 minutes by default. With one
+# shared num_ctx the model is loaded once and then serves every role,
+# so the only thing that still evicts it is that idle timer -- which
+# means the first question after a coffee break pays the full ~15s
+# reload that the section above exists to avoid.
+#
+# Sent per request rather than set on the server, so it travels with
+# the code instead of depending on how Ollama happens to be launched.
+OLLAMA_KEEP_ALIVE = os.environ.get("OLLAMA_KEEP_ALIVE", "60m")
+
+
+# ---------------------------------------------------------------------------
+# Reply length caps (num_predict)
+# ---------------------------------------------------------------------------
+# Ollama has no reply-length limit unless num_predict is sent, so a
+# role that should answer {"verdict": "safe"} in 8 tokens is free to
+# emit hundreds. That is not hypothetical for small local models asked
+# for JSON: one run away and the turn's latency doubles.
+#
+# These are CEILINGS, not targets -- generous enough that no correct
+# reply is ever truncated. The classifier roles return a fixed small
+# JSON shape and are capped tightly; the grader's reply grows with the
+# number of records it judges; the generator writes prose to a customer
+# and is left effectively unbounded.
+#
+# -1 means "no limit" to Ollama.
+OLLAMA_INDEXER_NUM_PREDICT = int(os.environ.get("OLLAMA_INDEXER_NUM_PREDICT", "512"))
+OLLAMA_TRAVERSER_NUM_PREDICT = int(os.environ.get("OLLAMA_TRAVERSER_NUM_PREDICT", "256"))
+OLLAMA_GENERATOR_NUM_PREDICT = int(os.environ.get("OLLAMA_GENERATOR_NUM_PREDICT", "-1"))
+OLLAMA_ROUTER_NUM_PREDICT = int(os.environ.get("OLLAMA_ROUTER_NUM_PREDICT", "64"))
+OLLAMA_SUMMARIZER_NUM_PREDICT = int(os.environ.get("OLLAMA_SUMMARIZER_NUM_PREDICT", "256"))
+OLLAMA_GUARDRAIL_INPUT_NUM_PREDICT = int(os.environ.get("OLLAMA_GUARDRAIL_INPUT_NUM_PREDICT", "32"))
+# Not tight: this one returns the unsupported claims it found, so its
+# reply is as long as the problems it saw. Truncating it would look
+# exactly like "found nothing wrong", which is the one failure this
+# role must never have.
+OLLAMA_GUARDRAIL_OUTPUT_NUM_PREDICT = int(os.environ.get("OLLAMA_GUARDRAIL_OUTPUT_NUM_PREDICT", "1024"))
+# Scales with the candidate count: one small judgement object per
+# record, up to ~15 records.
+OLLAMA_GRADER_NUM_PREDICT = int(os.environ.get("OLLAMA_GRADER_NUM_PREDICT", "1024"))
+OLLAMA_QUERIER_NUM_PREDICT = int(os.environ.get("OLLAMA_QUERIER_NUM_PREDICT", "512"))
+OLLAMA_DEFAULT_NUM_PREDICT = int(os.environ.get("OLLAMA_DEFAULT_NUM_PREDICT", "-1"))
 
 
 # ---------------------------------------------------------------------------

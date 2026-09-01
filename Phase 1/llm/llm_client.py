@@ -66,6 +66,17 @@ from config.settings import (
     OLLAMA_GRADER_NUM_CTX,
     OLLAMA_DEFAULT_NUM_CTX,
     OLLAMA_QUERIER_NUM_CTX,
+    OLLAMA_INDEXER_NUM_PREDICT,
+    OLLAMA_TRAVERSER_NUM_PREDICT,
+    OLLAMA_GENERATOR_NUM_PREDICT,
+    OLLAMA_ROUTER_NUM_PREDICT,
+    OLLAMA_SUMMARIZER_NUM_PREDICT,
+    OLLAMA_GUARDRAIL_INPUT_NUM_PREDICT,
+    OLLAMA_GUARDRAIL_OUTPUT_NUM_PREDICT,
+    OLLAMA_GRADER_NUM_PREDICT,
+    OLLAMA_QUERIER_NUM_PREDICT,
+    OLLAMA_DEFAULT_NUM_PREDICT,
+    OLLAMA_KEEP_ALIVE,
     OLLAMA_TIMEOUT_SECONDS,
 )
 
@@ -113,12 +124,33 @@ class LLMClient:
         "querier": OLLAMA_QUERIER_NUM_CTX,
     }
 
+    # Ceiling on reply length per role. Without num_predict Ollama
+    # imposes no limit at all, so a classifier that owes us eight
+    # tokens of JSON can spend hundreds. See the reasoning on
+    # OLLAMA_*_NUM_PREDICT in config/settings.py. -1 means unbounded.
+    #
+    # .get() with a fallback for the same reason as NUM_CTX_BY_ROLE
+    # above: a role added to MODEL_BY_ROLE but forgotten here must
+    # degrade to "unbounded", never raise at construction time.
+    NUM_PREDICT_BY_ROLE = {
+        "indexer": OLLAMA_INDEXER_NUM_PREDICT,
+        "traverser": OLLAMA_TRAVERSER_NUM_PREDICT,
+        "generator": OLLAMA_GENERATOR_NUM_PREDICT,
+        "router": OLLAMA_ROUTER_NUM_PREDICT,
+        "summarizer": OLLAMA_SUMMARIZER_NUM_PREDICT,
+        "guardrail_input": OLLAMA_GUARDRAIL_INPUT_NUM_PREDICT,
+        "guardrail_output": OLLAMA_GUARDRAIL_OUTPUT_NUM_PREDICT,
+        "grader": OLLAMA_GRADER_NUM_PREDICT,
+        "querier": OLLAMA_QUERIER_NUM_PREDICT,
+    }
+
     def __init__(
         self,
         role: str = "generator",
         model: str = None,
         temperature: float = None,
         num_ctx: int = None,
+        num_predict: int = None,
     ):
         
         if role not in self.MODEL_BY_ROLE:
@@ -150,6 +182,14 @@ class LLMClient:
             else self.NUM_CTX_BY_ROLE.get(role, OLLAMA_DEFAULT_NUM_CTX)
         )
 
+        self.num_predict = (
+            num_predict
+            if num_predict is not None
+            else self.NUM_PREDICT_BY_ROLE.get(
+                role, OLLAMA_DEFAULT_NUM_PREDICT
+            )
+        )
+
     def generate(
         self,
         system_prompt: str,
@@ -175,12 +215,20 @@ class LLMClient:
 
             "stream": False,
 
+            # Keeps the model resident between roles instead of letting
+            # Ollama's 5-minute idle timer evict it, which would make
+            # the next question pay a full ~15s reload.
+            "keep_alive": OLLAMA_KEEP_ALIVE,
+
             "options": {
                 "temperature": self.temperature,
 
                 # Without this Ollama truncates the prompt to its own
                 # small default and never says so.
                 "num_ctx": self.num_ctx,
+
+                # Ceiling, not a target. Ollama is otherwise unbounded.
+                "num_predict": self.num_predict,
             },
         }
 

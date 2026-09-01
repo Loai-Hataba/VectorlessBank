@@ -47,6 +47,8 @@ INPUTS  : raw_question (str), memory_context (dict from
 OUTPUTS : contextualized_question (str)
 """
 
+import time
+
 from llm.llm_client import LLMClient
 from pipeline.pipeline_logger import log_stage
 
@@ -70,7 +72,7 @@ no quotes around it, no explanation.
 class QueryContextualizer:
 
     def __init__(self):
-        self.llm_client = LLMClient(role="summarizer")
+        self.llm_client = LLMClient(role="generator", temperature=0.0)
 
     def contextualize(
         self,
@@ -96,6 +98,8 @@ class QueryContextualizer:
             f"LATEST MESSAGE: {raw_question}"
         )
 
+        started = time.time()
+
         try:
             rewritten = self.llm_client.generate(
                 system_prompt=CONTEXTUALIZER_SYSTEM_PROMPT,
@@ -118,6 +122,8 @@ class QueryContextualizer:
                 "contextualized_question": contextualized_question,
                 "fell_back_to_raw": not bool(rewritten),
             },
+            duration_ms=(time.time() - started) * 1000,
+            llm=self.llm_client.last_metrics,
         )
 
         return contextualized_question

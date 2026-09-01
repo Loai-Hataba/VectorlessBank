@@ -163,7 +163,7 @@ class OutputGuardrail:
     ):
         self.llm_client = (
             llm_client
-            or LLMClient(role="guardrail_output")
+            or LLMClient(role="generator", temperature=0.0)
         )
 
         self.max_context_chars = max_context_chars

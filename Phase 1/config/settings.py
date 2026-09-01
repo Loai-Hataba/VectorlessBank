@@ -46,6 +46,119 @@ CAMPAIGNS_JSON_PATH = RAW_DATA_DIR / "campaigns_clean.json"
 DATAFRAME_INDEX_DIR = PROJECT_ROOT / "data" / "dataframes"
 DATAFRAME_SOURCES = frozenset({"cards", "offers"})
 # ============================================================
+# LLM PROVIDER
+# ============================================================
+# Which runtime serves every role. "ollama" runs locally; "gemini"
+# calls Google's hosted API.
+#
+# WHY THIS SWITCH EXISTS
+# ----------------------
+# This project was built local-first and the whole OLLAMA section
+# below is tuned for a 6 GB laptop GPU. That tuning works -- it took
+# one question from 381s to 125s -- but it is tuning around a wall:
+# llama3.1:8b plus a 32k context does not fit in 6 GB, so nearly half
+# the model runs on the CPU and prompt reading crawls at ~700 tok/s.
+#
+# Measured on the real offers traversal (28,229 tokens):
+#
+#     llama3.1:8b, local, 45% on CPU ....... 62.5 s
+#     gemini-flash-lite-latest, hosted ......  2.1 s
+#
+# Thirty times faster, and MORE accurate on that call: the hosted
+# model returned only the specific node the question asked about,
+# while the local one also grabbed the broad parent -- the exact
+# imprecision behind the Carrefour retrieval bug.
+#
+# THE TRADE, STATED PLAINLY
+# -------------------------
+# "gemini" sends card pricing, campaign terms and offer data to a
+# third party on every question. That is a data-governance decision,
+# not a performance one. Set LLM_PROVIDER=ollama to keep everything on
+# the machine; nothing else needs to change, because every role goes
+# through LLMClient and both backends implement the same methods.
+# DEFAULT IS LOCAL, DELIBERATELY.
+#
+# "gemini" was measured and works -- one question went from 125s to
+# 14s, a ~9x speedup. It is not the default anyway, because the cost
+# is not latency: every question ships card pricing, campaign terms
+# and offer data to a third party. That is a data-governance decision
+# about bank data, and it is not one to inherit from a default.
+#
+# Switch with LLM_PROVIDER=gemini in the environment if and when that
+# decision is made deliberately, and note it also needs GEMINI_API_KEY.
+LLM_PROVIDER = os.environ.get("LLM_PROVIDER", "ollama").strip().lower()
+
+VALID_LLM_PROVIDERS = frozenset({"ollama", "gemini"})
+
+# ------------------------------------------------------------
+# Gemini
+# ------------------------------------------------------------
+# Read from the environment only. Never hardcode a key here -- this
+# file is in git.
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+
+GEMINI_BASE_URL = os.environ.get(
+    "GEMINI_BASE_URL",
+    "https://generativelanguage.googleapis.com/v1beta",
+)
+
+# Per role, for the same reason the Ollama models are per role: the
+# roles do genuinely different work. "-latest" aliases are used rather
+# than pinned versions because a pinned one can be retired out from
+# under you -- gemini-2.5-flash already returns 404 "no longer
+# available to new users" on a new key.
+#
+# flash-lite for the roles that classify or navigate, flash for the
+# ones that write prose or judge whether prose is grounded.
+# MEASURED, NOT ASSUMED: gemini-flash-latest read-timed-out at 120s on
+# a TRIVIAL prompt from this machine, twice, while flash-lite answered
+# the same prompt in 1.1s. Until that is understood, both names point
+# at the model that actually responds. Change this one line to try the
+# bigger model again.
+GEMINI_FLASH = os.environ.get("GEMINI_FLASH_MODEL", "gemini-flash-lite-latest")
+GEMINI_FLASH_LITE = os.environ.get(
+    "GEMINI_FLASH_LITE_MODEL", "gemini-flash-lite-latest"
+)
+
+GEMINI_MODEL_BY_ROLE = {
+    "indexer": GEMINI_FLASH_LITE,
+    "traverser": GEMINI_FLASH_LITE,
+    "generator": GEMINI_FLASH,
+}
+
+# Gemini 2.5 models think before answering, and those thinking tokens
+# are billed against maxOutputTokens -- so a tight cap can be consumed
+# entirely by thinking, returning an EMPTY string that every parser
+# here would read as a failure.
+#
+# The obvious fix, thinkingBudget=0, DOES NOT WORK on flash-lite:
+#
+#     no thinkingConfig      1.11s  ok, 12 output tokens
+#     thinkingBudget = 0     1.17s  HTTP 400 INVALID_ARGUMENT
+#     thinkingBudget = -1    1.70s  ok, but 140 thinking tokens
+#
+# That model cannot have thinking switched off, and asking costs a
+# 400. So the default is to send no thinkingConfig at all, which is
+# both the fastest and the only universally accepted option. Set this
+# to an integer only for a model known to accept it; leave it empty to
+# omit the field.
+GEMINI_THINKING_BUDGET = os.environ.get("GEMINI_THINKING_BUDGET", "").strip()
+
+# The local num_predict ceilings exist to stop a small local model
+# rambling. A hosted model does not have that failure mode, and a cap
+# that is too tight here truncates mid-JSON, so the floor is generous.
+GEMINI_MIN_OUTPUT_TOKENS = int(
+    os.environ.get("GEMINI_MIN_OUTPUT_TOKENS", "2048")
+)
+
+GEMINI_TIMEOUT_SECONDS = int(os.environ.get("GEMINI_TIMEOUT_SECONDS", "120"))
+
+# Hosted APIs rate-limit and occasionally 503. One quiet retry keeps a
+# transient blip from surfacing as a failed turn.
+GEMINI_MAX_RETRIES = int(os.environ.get("GEMINI_MAX_RETRIES", "2"))
+
+
+# ============================================================
 # LLM / OLLAMA CONFIGURATION
 # ============================================================
 OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
@@ -53,15 +166,97 @@ OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
 # ------------------------------------------------------------
 # Models
 # ------------------------------------------------------------
-OLLAMA_INDEXER_MODEL   = "llama3.1:8b"
-OLLAMA_TRAVERSER_MODEL = "llama3.1:8b"
-OLLAMA_GENERATOR_MODEL = "llama3.1:8b"
-OLLAMA_ROUTER_MODEL = "llama3.1:8b"
-OLLAMA_SUMMARIZER_MODEL = "llama3.1:8b"
-OLLAMA_GUARDRAIL_INPUT_MODEL = "llama3.1:8b"
-OLLAMA_GUARDRAIL_OUTPUT_MODEL = "llama3.1:8b"
-OLLAMA_GRADER_MODEL = "llama3.1:8b"
-OLLAMA_QUERIER_MODEL = "llama3.1:8b"
+# THREE ROLES, NOT NINE
+# ---------------------
+# There were nine -- indexer, traverser, generator, router,
+# summarizer, guardrail_input, guardrail_output, grader, querier --
+# each with its own model, temperature, context size and reply cap.
+# Thirty-six constants describing what turned out to be three
+# genuinely different jobs, all pointed at the same model anyway.
+#
+# The three that remain are the three that actually differ in kind:
+#
+#   indexer    builds the tree index, offline, once
+#   traverser  picks from a known set of options -- which nodes,
+#              which sources, which filters. Small fixed JSON out.
+#   generator  reads and writes natural language, or judges whether
+#              some natural language is grounded
+#
+# Everything else was one of those three wearing a different name.
+# router and querier are selection, so they are traverser work.
+# summarizer, grader and both guardrails read or judge prose, so they
+# are generator work. LLMClient.ROLE_ALIASES maps the old names onto
+# the new ones, so existing call sites and the other worktrees keep
+# running rather than raising on an unknown role.
+#
+# WHAT THIS COSTS
+# ---------------
+# Per-role reply caps go with the per-role names: guardrail_input had
+# a 32-token ceiling and now inherits the generator's unbounded one.
+# That ceiling was worth a second or two against a rambling local
+# model and is worth nothing against a hosted one. Where a caller
+# still needs a specific knob it passes it directly --
+# LLMClient(role="generator", temperature=0.0) -- which is how the
+# grader and both guardrails keep their determinism below.
+# WHY qwen3.5:4b AND NOT llama3.1:8b
+# ---------------------------------
+# The bottleneck on this machine is VRAM, not model quality. A 6 GB
+# card cannot hold 4.9 GB of llama weights plus a 32k KV cache, so
+# ~45% of that model runs on the CPU. A 3.4 GB model leaves room.
+#
+# Measured on the real offers traversal, four unseen questions each,
+# both models warm (mean wall clock):
+#
+#     llama3.1:8b               57.9s   45% CPU / 55% GPU   7.6 GB
+#     qwen3.5:4b (think off)    26.7s   28% CPU / 72% GPU   4.4 GB
+#     qwen2.5:14b              162.0s   66% CPU / 34% GPU
+#
+# 2.2x faster on traversal, same node selected on all four, and on one
+# question it found a second relevant node llama missed. The 14b is far
+# worse for the obvious reason: 9 GB does not fit in 6 GB.
+#
+# SO WHY IS LLAMA STILL THE DEFAULT
+# ---------------------------------
+# Because traversal is not the whole pipeline, and the rest of it did
+# not hold up. Across three real end-to-end questions qwen3.5:4b
+# produced one FALSE BLOCK -- "what is a credit card grace period" was
+# refused with the internals-disclosure reply, flags=
+# ['discloses_internals'] -- and in a targeted output-guardrail test it
+# also flagged a correct general-knowledge answer as fabrication.
+# llama3.1:8b did neither, on the same inputs.
+#
+# Refusing a real customer question is the failure this codebase has
+# already been bitten by once (see input_guardrail.py) and it is worse
+# than being slow. Both models now score 27/27 on
+# evaluation/eval_input_guardrail.py, so the guardrail improvement that
+# arrived alongside this was the PROMPT, not the model.
+#
+# qwen3.5:4b remains a good trade if you want the speed and can accept
+# that risk -- it is one environment variable away, and the think flag
+# and fence stripping below exist to make it work. Re-run
+# eval_input_guardrail.py and a few real questions before trusting it.
+#
+# BEWARE ONE MEASUREMENT TRAP: asking the same question twice hits
+# Ollama's prompt cache and returns in ~5s. That is real for repeat
+# questions but says nothing about the first ask. Always benchmark
+# with unseen questions.
+#
+# Env-readable so switching back is one variable, not an edit.
+OLLAMA_INDEXER_MODEL = os.environ.get("OLLAMA_INDEXER_MODEL", "llama3.1:8b")
+OLLAMA_TRAVERSER_MODEL = os.environ.get("OLLAMA_TRAVERSER_MODEL", "llama3.1:8b")
+OLLAMA_GENERATOR_MODEL = os.environ.get("OLLAMA_GENERATOR_MODEL", "llama3.1:8b")
+
+# Thinking models spend output tokens reasoning BEFORE they answer,
+# and those tokens count against num_predict. qwen3.5:4b with a 256
+# token cap spends all 256 thinking and returns an EMPTY string --
+# which every parser here reads as a failure, and which fails open in
+# the guardrails. Switching thinking off is what makes this model
+# usable, and it is also most of the speed win.
+#
+# Sent as a top-level request field. Verified harmless on models that
+# do not think: llama3.1:8b accepts think=false and ignores it.
+# Set to "" to omit the field entirely.
+OLLAMA_THINK = os.environ.get("OLLAMA_THINK", "false").strip().lower()
 
 
 # ------------------------------------------------------------
@@ -70,12 +265,6 @@ OLLAMA_QUERIER_MODEL = "llama3.1:8b"
 OLLAMA_INDEXER_TEMPERATURE = 0.0
 OLLAMA_TRAVERSER_TEMPERATURE = 0.0
 OLLAMA_GENERATOR_TEMPERATURE = 0.2
-OLLAMA_ROUTER_TEMPERATURE = 0.0
-OLLAMA_SUMMARIZER_TEMPERATURE = 0.0
-OLLAMA_GUARDRAIL_INPUT_TEMPERATURE = 0.0
-OLLAMA_GUARDRAIL_OUTPUT_TEMPERATURE = 0.0
-OLLAMA_GRADER_TEMPERATURE = 0.0
-OLLAMA_QUERIER_TEMPERATURE = 0.0
 
 # ------------------------------------------------------------
 # Context window (num_ctx)
@@ -116,18 +305,14 @@ OLLAMA_QUERIER_TEMPERATURE = 0.0
 # has room for one. So every role switch EVICTS the model and reloads
 # ~5 GB from scratch. Measured on this machine, llama3.1:8b:
 #
-#     same num_ctx twice   ->  2.9s wall, 0.4s of it loading
-#     num_ctx changed      -> 19.7s wall, 16.1s of it loading
-#     num_ctx changed back -> 17.1s wall, 14.5s of it loading
+#     same num_ctx twice  ->  2.9s wall, 0.4s of it loading
+#     num_ctx changed     -> 19.7s wall, 16.1s of it loading
+#     num_ctx changed back-> 17.1s wall, 14.5s of it loading
 #
 # One turn used to walk 2048 -> 4096 -> 4096 -> 32768 -> 16384 ->
 # 32768 -> 32768: five reloads on a clean turn, seven when CRAG
 # widens. At ~15s each that was 75-105 SECONDS PER QUESTION spent
-# loading and doing no work at all. On an identical nine-call
-# sequence, before and after:
-#
-#     before   wall 154.5s   loading 126.4s   reloads 8
-#     after    wall  30.5s   loading   2.9s   reloads 0
+# loading and doing no work at all.
 #
 # So the per-role numbers below now all default to ONE shared value.
 # The per-role names and their env overrides are deliberately kept:
@@ -135,7 +320,7 @@ OLLAMA_QUERIER_TEMPERATURE = 0.0
 # a future deployment on a bigger card can raise any single role again
 # by exporting its variable. What changed is only the default, and the
 # rule it now follows: pick the largest window any role genuinely
-# needs and give it to all of them, because a shared window is free
+# needs, and give it to all of them, because a shared window is free
 # and a switched window costs fifteen seconds.
 #
 # The largest genuine need is the traverser at ~26,560 tokens for the
@@ -147,15 +332,9 @@ OLLAMA_QUERIER_TEMPERATURE = 0.0
 # (32 layers x 8 KV heads x 128 dim x 2 x 2 bytes = 128 KB/token),
 # which does NOT fit alongside 4.9 GB of weights on a 6 GB card. Run
 # the Ollama SERVER with OLLAMA_FLASH_ATTENTION=1 and
-# OLLAMA_KV_CACHE_TYPE=q8_0 to halve that to ~2 GB. Measured on the
-# real offers traversal, 28,229 tokens:
-#
-#     f16 KV, no flash attention   176.1s   10.0 GB   61% CPU / 39% GPU
-#     q8_0 KV + flash attention     62.5s    7.6 GB   45% CPU / 55% GPU
-#
-# Those are server environment variables, not request options -- they
-# must be set before `ollama serve` starts, and this file cannot set
-# them.
+# OLLAMA_KV_CACHE_TYPE=q8_0 to halve that to ~2 GB. Those are server
+# environment variables, not request options -- they must be set
+# before `ollama serve` starts, and this file cannot set them.
 OLLAMA_SHARED_NUM_CTX = int(os.environ.get("OLLAMA_SHARED_NUM_CTX", "32768"))
 
 _SHARED = str(OLLAMA_SHARED_NUM_CTX)
@@ -189,13 +368,10 @@ OLLAMA_GENERATOR_NUM_CTX = int(os.environ.get("OLLAMA_GENERATOR_NUM_CTX", _SHARE
 
 # Router and summarizer see a short question, a source list and a small
 # conversation window. Partner A sized and tested these.
-OLLAMA_ROUTER_NUM_CTX = int(os.environ.get("OLLAMA_ROUTER_NUM_CTX", _SHARED))
 
-OLLAMA_SUMMARIZER_NUM_CTX = int(os.environ.get("OLLAMA_SUMMARIZER_NUM_CTX", _SHARED))
 
 # Reads one raw user message and classifies it. The smallest prompt in
 # the pipeline.
-OLLAMA_GUARDRAIL_INPUT_NUM_CTX = int(os.environ.get("OLLAMA_GUARDRAIL_INPUT_NUM_CTX", _SHARED))
 
 # NOT 4096. The output guardrail reads the generated answer AND the
 # whole context it must be checked against, so it needs the same room as
@@ -203,19 +379,16 @@ OLLAMA_GUARDRAIL_INPUT_NUM_CTX = int(os.environ.get("OLLAMA_GUARDRAIL_INPUT_NUM_
 # reports the generator's legitimate, correctly-sourced claims as
 # fabrication -- which is exactly what happened when its context was
 # capped too low. See the note on GUARDRAIL_MAX_CONTEXT_CHARS.
-OLLAMA_GUARDRAIL_OUTPUT_NUM_CTX = int(os.environ.get("OLLAMA_GUARDRAIL_OUTPUT_NUM_CTX", _SHARED))
 
 # Sees every candidate record before filtering -- up to three sources'
 # worth -- as compact GRADER_MAX_RECORD_CHARS renderings. Fifteen
 # candidates at 1200 characters is already ~4,500 tokens before the
 # prompt, so 8192 leaves too little headroom.
-OLLAMA_GRADER_NUM_CTX = int(os.environ.get("OLLAMA_GRADER_NUM_CTX", _SHARED))
 
 # Fallback for any role that has no explicit entry, so that adding a
 # role to MODEL_BY_ROLE without adding one here degrades to a usable
 # default instead of raising KeyError at construction time.
 OLLAMA_DEFAULT_NUM_CTX = int(os.environ.get("OLLAMA_DEFAULT_NUM_CTX", _SHARED))
-OLLAMA_QUERIER_NUM_CTX = int(os.environ.get("OLLAMA_QUERIER_NUM_CTX", _SHARED))
 
 # ---------------------------------------------------------------------------
 # LLM request timeout
@@ -231,7 +404,7 @@ OLLAMA_TIMEOUT_SECONDS = int(os.environ.get("OLLAMA_TIMEOUT_SECONDS","300",))
 # shared num_ctx the model is loaded once and then serves every role,
 # so the only thing that still evicts it is that idle timer -- which
 # means the first question after a coffee break pays the full ~15s
-# reload that the section above exists to avoid.
+# reload that the rest of this section exists to avoid.
 #
 # Sent per request rather than set on the server, so it travels with
 # the code instead of depending on how Ollama happens to be launched.
@@ -243,31 +416,25 @@ OLLAMA_KEEP_ALIVE = os.environ.get("OLLAMA_KEEP_ALIVE", "60m")
 # ---------------------------------------------------------------------------
 # Ollama has no reply-length limit unless num_predict is sent, so a
 # role that should answer {"verdict": "safe"} in 8 tokens is free to
-# emit hundreds. That is not hypothetical for small local models asked
-# for JSON: one run away and the turn's latency doubles.
+# emit hundreds. That is not hypothetical for small local models
+# asked for JSON: one run away and the turn's latency doubles.
 #
 # These are CEILINGS, not targets -- generous enough that no correct
 # reply is ever truncated. The classifier roles return a fixed small
-# JSON shape and are capped tightly; the grader's reply grows with the
-# number of records it judges; the generator writes prose to a customer
-# and is left effectively unbounded.
+# JSON shape and are capped tightly; the grader's reply grows with
+# the number of records it judges; the generator writes prose to a
+# customer and is left effectively unbounded.
 #
 # -1 means "no limit" to Ollama.
 OLLAMA_INDEXER_NUM_PREDICT = int(os.environ.get("OLLAMA_INDEXER_NUM_PREDICT", "512"))
 OLLAMA_TRAVERSER_NUM_PREDICT = int(os.environ.get("OLLAMA_TRAVERSER_NUM_PREDICT", "256"))
 OLLAMA_GENERATOR_NUM_PREDICT = int(os.environ.get("OLLAMA_GENERATOR_NUM_PREDICT", "-1"))
-OLLAMA_ROUTER_NUM_PREDICT = int(os.environ.get("OLLAMA_ROUTER_NUM_PREDICT", "64"))
-OLLAMA_SUMMARIZER_NUM_PREDICT = int(os.environ.get("OLLAMA_SUMMARIZER_NUM_PREDICT", "256"))
-OLLAMA_GUARDRAIL_INPUT_NUM_PREDICT = int(os.environ.get("OLLAMA_GUARDRAIL_INPUT_NUM_PREDICT", "32"))
 # Not tight: this one returns the unsupported claims it found, so its
 # reply is as long as the problems it saw. Truncating it would look
 # exactly like "found nothing wrong", which is the one failure this
 # role must never have.
-OLLAMA_GUARDRAIL_OUTPUT_NUM_PREDICT = int(os.environ.get("OLLAMA_GUARDRAIL_OUTPUT_NUM_PREDICT", "1024"))
-# Scales with the candidate count: one small judgement object per
-# record, up to ~15 records.
-OLLAMA_GRADER_NUM_PREDICT = int(os.environ.get("OLLAMA_GRADER_NUM_PREDICT", "1024"))
-OLLAMA_QUERIER_NUM_PREDICT = int(os.environ.get("OLLAMA_QUERIER_NUM_PREDICT", "512"))
+# Scales with RERANK_TOP_K-ish candidate counts: one small judgement
+# object per record, up to ~15 records.
 OLLAMA_DEFAULT_NUM_PREDICT = int(os.environ.get("OLLAMA_DEFAULT_NUM_PREDICT", "-1"))
 
 

@@ -165,7 +165,10 @@ print("--- memory would store the DELIVERED text, not the draft ---")
 # The pipeline assigns answer_text = verdict.answer before add_turn, so
 # a blocked draft can never become the referent of a follow-up.
 import inspect
-src = inspect.getsource(rp.RagPipeline.answer)
+# The invariant lives in _run_turn now: answer() and
+# answer_with_progress() both drain it, so checking it here covers
+# BOTH delivery paths at once.
+src = inspect.getsource(rp.RagPipeline._run_turn)
 verdict_at = src.index("answer_text = verdict.answer")
 memory_at = src.index("self.conversation_memory.add_turn")
 check("guardrail applied before memory write", verdict_at < memory_at)
@@ -175,7 +178,26 @@ check("guardrail applied before return",
 print("--- every new stage is logged ---")
 for stage in ("crag_grade", "crag_retry", "guardrail_output"):
     check(f"logs {stage}", f'stage="{stage}"' in src or f'"{stage}"' in
-          inspect.getsource(rp.RagPipeline._retrieve_and_grade) + src)
+          inspect.getsource(rp.RagPipeline._retrieve_and_grade_stream) + src)
+
+print("--- both entry points deliver the CHECKED answer ---")
+# answer() and answer_with_progress() must be the same turn, or the
+# progress path could bypass the guardrail the blocking path enforces.
+check("answer() drains _run_turn",
+      "_run_turn" in inspect.getsource(rp.RagPipeline.answer))
+check("answer_with_progress() drains the same _run_turn",
+      "_run_turn" in inspect.getsource(rp.RagPipeline.answer_with_progress))
+stream_src = inspect.getsource(rp.RagPipeline._run_turn)
+check("no answer text is emitted before the verdict",
+      'yield ("token"' not in stream_src)
+check("result event carries the post-verdict text",
+      stream_src.index("answer_text = verdict.answer")
+      < stream_src.rindex('"result"'))
+
+print("--- every stage is timed ---")
+check("turn_complete is logged", '"turn_complete"' in stream_src)
+check("stage durations recorded", "stage_ms" in stream_src)
+check("llm metrics attached", "last_metrics" in stream_src)
 
 print()
 print(f"RESULT: {passed} passed, {failed} failed")

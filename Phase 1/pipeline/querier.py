@@ -84,7 +84,7 @@ answers the question, return {"filters": []}.
 class DataFrameQuerier:
 
     def __init__(self, llm_client: LLMClient | None = None):
-        self.llm_client = llm_client or LLMClient(role="querier")
+        self.llm_client = llm_client or LLMClient(role="traverser")
 
     def build_filters(
         self,

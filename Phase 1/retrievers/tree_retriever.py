@@ -85,6 +85,7 @@ class TreeRetriever:
         }
 
         self.nodes_by_id = {}
+        self.node_depth = {}
 
         self._index_tree_nodes(
             self.tree.root
@@ -174,18 +175,7 @@ Return ONLY:
             selected_nodes
         )
 
-        record_ids = []
-
-        for node in selected_nodes:
-
-            # A selected node stands for everything beneath it, not just
-            # the records pinned to it directly. Category nodes carry no
-            # record_ids of their own, so selecting "Installment" would
-            # otherwise retrieve nothing at all.
-            for record_id in self._collect_record_ids(node):
-
-                if record_id not in record_ids:
-                    record_ids.append(record_id)
+        record_ids = self._merge_selected_records(selected_nodes, top_k)
 
         records = [
             self.records_by_id[record_id]
@@ -217,6 +207,85 @@ Return ONLY:
         }
 
         return records
+
+    def _merge_selected_records(self, selected_nodes: list, top_k: int) -> list:
+        """
+        Take records from EVERY selected node, most specific node first.
+
+        THE BUG THIS REPLACES
+        ---------------------
+        The old version walked the selected nodes in the order the LLM
+        happened to name them, appended each node's whole subtree, and
+        only then cut to top_k. When the model selected one broad node
+        and one specific node -- which the traversal prompt explicitly
+        invites, and which is usually the RIGHT answer -- the broad
+        node's subtree filled top_k before the specific node was
+        reached at all.
+
+        Asked "tell me about the egypt air campaign", the traversal
+        correctly selected BOTH "Installment Offers" (186 records) and
+        "Egypt air - Installment Offer" (1 record). Egypt Air sat at
+        position 117 of the merged list, top_k was 5, and so the one
+        record the customer actually asked about was the one record
+        guaranteed to be dropped. What surfaced instead was the first
+        five offers in tree order -- Mahgoub, Vevian, Carrefour --
+        which is not a ranking of anything, just an alphabetical
+        accident.
+
+        Note _remove_redundant_ancestors could not help here: the two
+        nodes were in different branches ("Travel And Airlines" vs
+        "Installment Offers"), so neither was the other's ancestor.
+        Both selections were legitimate; the merge was what lost one.
+
+        THE RULE
+        --------
+        Round-robin across the selected nodes, deepest node first. Every
+        node the model chose contributes its best record before any node
+        contributes its second, so a specific selection can no longer be
+        crowded out by a broad one. Within a node the original
+        parents-before-children order is preserved.
+        """
+
+        # Deepest first: depth is the only signal available here for
+        # "how specific was this selection", and it is exactly the
+        # signal the traversal prompt asks the model to optimise for.
+        ordered = sorted(
+            selected_nodes,
+            key=lambda node: self.node_depth.get(node.node_id, 0),
+            reverse=True,
+        )
+
+        # A selected node stands for everything beneath it, not just the
+        # records pinned to it directly. Category nodes carry no
+        # record_ids of their own, so selecting "Installment" would
+        # otherwise retrieve nothing at all.
+        queues = [self._collect_record_ids(node) for node in ordered]
+
+        merged = []
+        seen = set()
+        position = 0
+
+        while any(position < len(q) for q in queues):
+
+            for queue in queues:
+
+                if position >= len(queue):
+                    continue
+
+                record_id = queue[position]
+
+                if record_id in seen:
+                    continue
+
+                seen.add(record_id)
+                merged.append(record_id)
+
+                if len(merged) >= top_k:
+                    return merged
+
+            position += 1
+
+        return merged
 
     def _build_tree_text(self) -> str:
         """
@@ -367,15 +436,18 @@ Return ONLY:
             if node.node_id not in redundant_ids
         ]
 
-    def _index_tree_nodes(self, node):
+    def _index_tree_nodes(self, node, depth: int = 0):
         """
         Recursively index every node in the tree.
 
         The retriever needs O(1)-style lookup from the node ID returned
-        by the traversal LLM to the actual TreeNode object.
+        by the traversal LLM to the actual TreeNode object, and the
+        depth of each node so that a specific selection can be ranked
+        ahead of a broad one -- see _merge_selected_records.
         """
 
         self.nodes_by_id[node.node_id] = node
+        self.node_depth[node.node_id] = depth
 
         for child in node.children:
-            self._index_tree_nodes(child)
+            self._index_tree_nodes(child, depth + 1)
